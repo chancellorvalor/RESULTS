@@ -15,7 +15,7 @@
       <div>
         <p class="kicker">APRP ADMIN</p>
         <h1>Live Election Control</h1>
-        <p>Enter election settings, candidate photos, turnout, vote percentages, and calls.</p>
+        <p>Control the public results page, candidate information, turnout, vote percentages, and calls.</p>
       </div>
       <div class="actions">
         <button id="save-election">Save Election Settings</button>
@@ -28,6 +28,10 @@
     <section class="card election-card">
       <h2>Election Settings</h2>
       <div class="grid">
+        <label>
+          Election Year
+          <input id="election-year" placeholder="2004" />
+        </label>
         <label>
           Election Title
           <input id="election-title" />
@@ -51,7 +55,7 @@
       <div class="section-head compact">
         <div>
           <h2>Candidates</h2>
-          <p>Set candidate names, party labels, colors, and photo URLs.</p>
+          <p>Set candidate names, party labels, colors, short names, and photo URLs.</p>
         </div>
         <button id="save-candidates">Save Candidates</button>
       </div>
@@ -63,7 +67,7 @@
       <div class="section-head">
         <div>
           <h2>State Inputs</h2>
-          <p>Total turnout is the full expected/possible turnout. Turnout % is how much has reported so far.</p>
+          <p>Total turnout is expected turnout. Turnout % is how much has reported so far.</p>
         </div>
         <input id="state-search" placeholder="Search state..." />
       </div>
