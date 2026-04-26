@@ -93,6 +93,7 @@
   let geojson;
   let election;
   let rows = [];
+  let rowByAbbr = {};
   let candidates = [];
   let leftCandidate;
   let rightCandidate;
@@ -199,6 +200,7 @@
       if (resultsError) throw resultsError;
 
       rows = (resultRows || []).map(calculateRow);
+      rowByAbbr = Object.fromEntries(rows.map((r) => [String(r.abbr).toUpperCase(), r]));
 
       renderAll();
     } catch (err) {
@@ -223,30 +225,9 @@
     const base = parsed.length
       ? parsed
       : [
-          {
-            id: "gop",
-            party: "GOP",
-            name: "Republican Candidate",
-            shortName: "GOP",
-            color: "#e74c3c",
-            image: "",
-          },
-          {
-            id: "dem",
-            party: "DNC",
-            name: "Democratic Candidate",
-            shortName: "DNC",
-            color: "#3498db",
-            image: "",
-          },
-          {
-            id: "ind",
-            party: "IND",
-            name: "Independent",
-            shortName: "IND",
-            color: "#9b59b6",
-            image: "",
-          },
+          { id: "gop", party: "GOP", name: "Republican Candidate", shortName: "GOP", color: "#e74c3c", image: "" },
+          { id: "dem", party: "DNC", name: "Democratic Candidate", shortName: "DNC", color: "#3498db", image: "" },
+          { id: "ind", party: "IND", name: "Independent", shortName: "IND", color: "#9b59b6", image: "" },
         ];
 
     return base.map((c) => ({
@@ -284,6 +265,7 @@
 
     return {
       ...r,
+      abbr: String(r.abbr).toUpperCase(),
       counted_votes: counted,
       votes,
       leader,
@@ -308,7 +290,6 @@
   function renderAll() {
     els.title.textContent = election.title || "Election Results";
     els.subtitle.textContent = election.subtitle || "Live map";
-
     els.year.textContent = election.year || "";
     els.year.classList.toggle("hidden", !election.year);
 
@@ -324,12 +305,7 @@
   }
 
   function totals() {
-    const t = {
-      ev: {},
-      pv: {},
-      counted: 0,
-      expected: 0,
-    };
+    const t = { ev: {}, pv: {}, counted: 0, expected: 0 };
 
     candidates.forEach((c) => {
       t.ev[c.id] = 0;
@@ -412,16 +388,10 @@
 
     party.textContent = c.party;
     party.style.color = c.color;
-
     name.textContent = c.name;
-
     ev.textContent = `${t.ev[c.id] || 0} EV`;
     ev.style.color = c.color;
-
-    votes.textContent = `${(t.pv[c.id] || 0).toLocaleString()} votes • ${pct(
-      t.pv[c.id],
-      totalPv
-    ).toFixed(1)}%`;
+    votes.textContent = `${(t.pv[c.id] || 0).toLocaleString()} votes • ${pct(t.pv[c.id], totalPv).toFixed(1)}%`;
   }
 
   function renderLegend() {
@@ -502,9 +472,7 @@
                 `
               )
               .join("")}
-            <td><span class="party-pill" style="background:${lead.color}22;color:${lead.color}">${esc(
-          lead.party
-        )}</span></td>
+            <td><span class="party-pill" style="background:${lead.color}22;color:${lead.color}">${esc(lead.party)}</span></td>
             <td>${esc(r.status)}</td>
             <td>${r.vote_lead.toLocaleString()}</td>
           </tr>
@@ -520,20 +488,17 @@
   function drawMainMap() {
     if (!map?.loaded() || !geojson) return;
 
-    const byAbbr = Object.fromEntries(rows.map((r) => [r.abbr, r]));
     const data = JSON.parse(JSON.stringify(geojson));
 
     data.features = data.features
       .filter((f) => getFeatureAbbr(f) !== "PR")
       .map((f) => {
-        const abbr = getFeatureAbbr(f);
-        const r = byAbbr[abbr];
+        const abbr = String(getFeatureAbbr(f)).toUpperCase();
+        const r = rowByAbbr[abbr];
 
         f.properties.abbr = abbr;
-        f.properties.fill = r ? colorForRow(r) : defaultColors.uncalled;
-        f.properties.label = r
-          ? `${r.state_name}: ${r.status} ${candidateName(r.leader)}`
-          : f.properties.NAME || abbr;
+        f.properties.fill = colorForRow(r);
+        f.properties.label = r ? `${r.state_name}: ${r.status} ${candidateName(r.leader)}` : f.properties.NAME || abbr;
 
         return f;
       });
@@ -570,7 +535,8 @@
 
     map.on("mousemove", "states-fill", (e) => {
       map.getCanvas().style.cursor = "pointer";
-      const r = byAbbr[e.features[0].properties.abbr];
+      const abbr = String(e.features[0].properties.abbr).toUpperCase();
+      const r = rowByAbbr[abbr];
 
       popup.setLngLat(e.lngLat).setHTML(mapPopupHtml(r)).addTo(map);
     });
@@ -581,12 +547,22 @@
     });
 
     map.on("click", "states-fill", (e) => {
-      openStateModal(e.features[0].properties.abbr);
+      const abbr = String(e.features[0].properties.abbr).toUpperCase();
+      openStateModal(abbr);
     });
   }
 
   function colorForRow(r) {
-    if (!r.total_votes) return defaultColors.uncalled;
+    if (!r) return defaultColors.uncalled;
+
+    const hasData =
+      Number(r.gop_pct || 0) > 0 ||
+      Number(r.dem_pct || 0) > 0 ||
+      Number(r.ind_pct || 0) > 0 ||
+      Number(r.total_votes || 0) > 0;
+
+    if (!hasData) return defaultColors.uncalled;
+
     const c = findCandidate(r.called_party || r.leader);
     return c?.color || defaultColors.tossup;
   }
@@ -607,7 +583,7 @@
   }
 
   function openStateModal(abbr) {
-    const r = rows.find((x) => x.abbr === abbr);
+    const r = rowByAbbr[String(abbr).toUpperCase()];
     if (!r) return;
 
     const leftVotes = r.votes[leftCandidate.id] || 0;
@@ -639,9 +615,7 @@
 
     if (ind && (r.votes.ind || 0) > 0) {
       els.modalThirdCandidate.classList.remove("hidden");
-      els.modalThirdCandidate.innerHTML = `${esc(ind.name)}: ${Number(r.ind_pct || 0).toFixed(1)}% / ${(
-        r.votes.ind || 0
-      ).toLocaleString()} votes`;
+      els.modalThirdCandidate.innerHTML = `${esc(ind.name)}: ${Number(r.ind_pct || 0).toFixed(1)}% / ${(r.votes.ind || 0).toLocaleString()} votes`;
     } else {
       els.modalThirdCandidate.classList.add("hidden");
     }
@@ -722,14 +696,13 @@
   function drawPathMap() {
     if (!pathMap?.loaded() || !geojson) return;
 
-    const byAbbr = Object.fromEntries(rows.map((r) => [r.abbr, r]));
     const data = JSON.parse(JSON.stringify(geojson));
 
     data.features = data.features
       .filter((f) => getFeatureAbbr(f) !== "PR")
       .map((f) => {
-        const abbr = getFeatureAbbr(f);
-        const r = byAbbr[abbr];
+        const abbr = String(getFeatureAbbr(f)).toUpperCase();
+        const r = rowByAbbr[abbr];
 
         f.properties.abbr = abbr;
         f.properties.fill = pathColor(abbr, r);
@@ -766,7 +739,7 @@
     });
 
     pathMap.on("click", "path-states-fill", (e) => {
-      cyclePathState(e.features[0].properties.abbr);
+      cyclePathState(String(e.features[0].properties.abbr).toUpperCase());
     });
 
     pathMap.on("mousemove", "path-states-fill", () => {
