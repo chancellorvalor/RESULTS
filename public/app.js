@@ -1,5 +1,10 @@
 (() => {
   const cfg = window.APRP_CONFIG || {};
+  const activeSlug =
+    new URLSearchParams(window.location.search).get("slug") ||
+    cfg.defaultElectionSlug ||
+    "2008-president";
+
   const supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
 
   const els = {
@@ -48,6 +53,7 @@
     tableHead: document.getElementById("state-table-head"),
     tableBody: document.getElementById("state-table-body"),
     search: document.getElementById("state-search"),
+    grouped: document.getElementById("grouped-state-lists"),
     ticker: document.getElementById("closest-races"),
 
     stateModal: document.getElementById("state-modal"),
@@ -90,46 +96,41 @@
 
   let map;
   let pathMap;
+  let popup;
   let geojson;
   let election;
   let rows = [];
+  let rowByAbbr = {};
+  let rowByName = {};
   let candidates = [];
   let leftCandidate;
   let rightCandidate;
+  let currentMapMode = "lead";
   let pathSelections = {};
-  let rowByAbbr = {};
-  let rowByState = {};
-  let currentMapMode = "called";
-  let mapPopup;
 
-  const defaultColors = {
-    unreported: "#52667d",
-    lowTurnout: "#3f4e60",
-    tossup: "#7f8c99"
-  };
-
-  const palettes = {
-    dem: {
-      safe: "#167ac6",
-      likely: "#2491ea",
-      lean: "#5eb5f5",
-      tilt: "#98d3fb",
-      tctc: "#c9ebff"
-    },
+  const colors = {
+    unreported: "#344050",
+    locked: "#202936",
+    tossup: "#b9a76a",
     gop: {
-      safe: "#d63544",
-      likely: "#ef4f5b",
-      lean: "#f67a84",
-      tilt: "#f9a7ae",
-      tctc: "#ffd5d9"
+      tilt: "#4b2a32",
+      lean: "#7a3038",
+      likely: "#a83843",
+      safe: "#d54852"
+    },
+    dem: {
+      tilt: "#233f58",
+      lean: "#2d5f86",
+      likely: "#287fb8",
+      safe: "#28a3ef"
     },
     ind: {
-      safe: "#7a42c8",
-      likely: "#9158dc",
-      lean: "#ae84ea",
-      tilt: "#c7a9f4",
-      tctc: "#e1d2fb"
-    }
+      tilt: "#3d3159",
+      lean: "#5c3f82",
+      likely: "#8256b3",
+      safe: "#a568e0"
+    },
+    turnout: ["#202936", "#303b4a", "#4a596b", "#718093", "#a0adbb"]
   };
 
   document.addEventListener("DOMContentLoaded", init);
@@ -137,7 +138,6 @@
   async function init() {
     try {
       wireButtons();
-      injectMapModeButtons();
       initMap();
       await loadGeoJson();
       await loadAndRender();
@@ -152,16 +152,22 @@
   }
 
   function wireButtons() {
-    if (els.resetMap) {
-      els.resetMap.onclick = () => {
-        map?.flyTo({ center: [-98.5795, 39.8283], zoom: 3.45 });
+    document.querySelectorAll(".map-mode-btn").forEach(btn => {
+      btn.onclick = () => {
+        currentMapMode = btn.dataset.mode;
+        document.querySelectorAll(".map-mode-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        drawMainMap();
+        renderLegend();
       };
+    });
+
+    if (els.resetMap) {
+      els.resetMap.onclick = () => map?.flyTo({ center: [-98.5795, 39.8283], zoom: 3.45 });
     }
 
     if (els.toggleLegend) {
-      els.toggleLegend.onclick = () => {
-        els.legend?.classList.toggle("hidden");
-      };
+      els.toggleLegend.onclick = () => els.legend?.classList.toggle("hidden");
     }
 
     if (els.search) {
@@ -173,40 +179,9 @@
 
     if (els.modalClose) els.modalClose.onclick = closeStateModal;
     if (els.modalCloseBackdrop) els.modalCloseBackdrop.onclick = closeStateModal;
-
     if (els.pathButton) els.pathButton.onclick = openPathModal;
     if (els.pathClose) els.pathClose.onclick = closePathModal;
     if (els.pathCloseBackdrop) els.pathCloseBackdrop.onclick = closePathModal;
-  }
-
-  function injectMapModeButtons() {
-    const actions = document.querySelector(".map-actions");
-    if (!actions || document.getElementById("map-mode-wrap")) return;
-
-    const wrap = document.createElement("div");
-    wrap.id = "map-mode-wrap";
-    wrap.style.display = "flex";
-    wrap.style.gap = "8px";
-    wrap.style.flexWrap = "wrap";
-    wrap.style.marginRight = "10px";
-
-    wrap.innerHTML = `
-      <button class="secondary-btn map-mode-btn active" data-mode="called">Called races</button>
-      <button class="secondary-btn map-mode-btn" data-mode="lead">Strength of lead</button>
-      <button class="secondary-btn map-mode-btn" data-mode="turnout">Vote count status</button>
-    `;
-
-    actions.prepend(wrap);
-
-    wrap.querySelectorAll(".map-mode-btn").forEach(btn => {
-      btn.onclick = () => {
-        currentMapMode = btn.dataset.mode;
-        wrap.querySelectorAll(".map-mode-btn").forEach(x => x.classList.remove("active"));
-        btn.classList.add("active");
-        drawMainMap();
-        renderLegend();
-      };
-    });
   }
 
   function initMap() {
@@ -222,13 +197,7 @@
             attribution: "© OpenStreetMap contributors"
           }
         },
-        layers: [
-          {
-            id: "osm",
-            type: "raster",
-            source: "osm"
-          }
-        ]
+        layers: [{ id: "osm", type: "raster", source: "osm" }]
       },
       center: [-98.5795, 39.8283],
       zoom: 3.45
@@ -237,11 +206,11 @@
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 
     map.on("load", () => {
-      mapPopup = new maplibregl.Popup({
+      popup = new maplibregl.Popup({
         closeButton: false,
         closeOnClick: false,
-        offset: 12,
-        maxWidth: "370px"
+        offset: 14,
+        maxWidth: "420px"
       });
 
       if (geojson) drawMainMap();
@@ -249,7 +218,7 @@
   }
 
   async function loadGeoJson() {
-    const res = await fetch("./data/states.geojson");
+    const res = await fetch("./data/states.geojson?v=12000");
     if (!res.ok) throw new Error("Could not load states.geojson");
     geojson = await res.json();
   }
@@ -261,7 +230,7 @@
       const { data: electionData, error: electionError } = await supabase
         .from("elections")
         .select("*")
-        .eq("slug", cfg.defaultElectionSlug)
+        .eq("slug", activeSlug)
         .single();
 
       if (electionError) throw electionError;
@@ -269,25 +238,23 @@
       election = electionData;
       candidates = normalizeCandidates(election.candidates);
 
-      leftCandidate = findCandidate("dem") || findCandidate("dnc") || candidates[1] || candidates[0];
+      leftCandidate = findCandidate("dem") || candidates[1] || candidates[0];
       rightCandidate = findCandidate("gop") || candidates[0];
 
       const { data: resultRows, error: resultsError } = await supabase
         .from("state_results")
         .select("*")
         .eq("election_id", election.id)
-        .order("state_name");
+        .order("poll_close_order", { ascending: true })
+        .order("state_name", { ascending: true });
 
       if (resultsError) throw resultsError;
 
       rows = (resultRows || []).map(calculateRow);
-      buildRowIndexes();
+      buildIndexes();
       renderAll();
     } catch (err) {
-      showError(
-        "Could not load live results. Check config, Supabase schema, slug, and state_results rows. " +
-        (err.message || err)
-      );
+      showError("Could not load live results. " + (err.message || err));
     } finally {
       if (els.loader) els.loader.style.display = "none";
     }
@@ -302,43 +269,22 @@
       parsed = [];
     }
 
-    const base = parsed.length
-      ? parsed
-      : [
-          {
-            id: "gop",
-            party: "GOP",
-            name: "Republican Candidate",
-            shortName: "GOP",
-            color: "#ef5a52",
-            image: ""
-          },
-          {
-            id: "dem",
-            party: "DNC",
-            name: "Democratic Candidate",
-            shortName: "DNC",
-            color: "#40aaf7",
-            image: ""
-          },
-          {
-            id: "ind",
-            party: "IND",
-            name: "Independent",
-            shortName: "IND",
-            color: "#9b59b6",
-            image: ""
-          }
-        ];
+    if (!parsed.length) {
+      parsed = [
+        { id: "gop", party: "GOP", name: "Republican Candidate", shortName: "GOP", color: "#d54852", image: "" },
+        { id: "dem", party: "DNC", name: "Democratic Candidate", shortName: "DNC", color: "#28a3ef", image: "" },
+        { id: "ind", party: "IND", name: "Independent", shortName: "IND", color: "#a568e0", image: "" }
+      ];
+    }
 
-    return base.map(c => {
-      const normalizedId = normalizeCandidateId(c.id || c.party || "");
+    return parsed.map(c => {
+      const id = normalizeCandidateId(c.id || c.party) || "ind";
       return {
-        id: normalizedId,
-        party: c.party || String(normalizedId).toUpperCase(),
-        name: c.name || c.party || "",
-        shortName: c.shortName || c.party || c.name || "",
-        color: c.color || candidateFallbackColor(normalizedId),
+        id,
+        party: c.party || id.toUpperCase(),
+        name: c.name || c.party || id.toUpperCase(),
+        shortName: c.shortName || c.party || c.name || id.toUpperCase(),
+        color: c.color || fallbackCandidateColor(id),
         image: c.image || ""
       };
     });
@@ -346,22 +292,25 @@
 
   function normalizeCandidateId(id) {
     const x = String(id || "").trim().toLowerCase();
+
+    if (!x) return "";
     if (["dem", "dnc", "democrat", "democratic"].includes(x)) return "dem";
     if (["gop", "rep", "republican", "rnc"].includes(x)) return "gop";
     if (["ind", "independent", "other"].includes(x)) return "ind";
-    return x || "ind";
+
+    return x;
   }
 
-  function candidateFallbackColor(id) {
-    if (id === "dem") return "#40aaf7";
-    if (id === "gop") return "#ef5a52";
-    if (id === "ind") return "#9b59b6";
+  function fallbackCandidateColor(id) {
+    if (id === "dem") return "#28a3ef";
+    if (id === "gop") return "#d54852";
+    if (id === "ind") return "#a568e0";
     return "#64748b";
   }
 
   function findCandidate(id) {
-    const want = normalizeCandidateId(id);
-    return candidates.find(c => c.id === want);
+    const normalized = normalizeCandidateId(id);
+    return candidates.find(c => c.id === normalized);
   }
 
   function calculateRow(r) {
@@ -380,68 +329,61 @@
     };
 
     const sorted = Object.entries(votes).sort((a, b) => b[1] - a[1]);
-    const leader = sorted[0]?.[0] || "gop";
+    const leader = sorted[0]?.[0] || "";
     const leaderVotes = sorted[0]?.[1] || 0;
     const secondVotes = sorted[1]?.[1] || 0;
     const totalVotes = votes.dem + votes.gop + votes.ind;
     const voteLead = Math.max(0, leaderVotes - secondVotes);
     const marginPct = totalVotes ? (voteLead / totalVotes) * 100 : 0;
 
-    const calledParty = normalizeCalledParty(r.called_party, leader, reportingPct);
+    const calledParty = normalizeCandidateId(r.called_party);
 
     return {
       ...r,
-      state_name: String(r.state_name || "").trim(),
       abbr: normalizeAbbr(r.abbr),
+      state_name: String(r.state_name || "").trim(),
       electoral_votes: Number(r.electoral_votes || 0),
       total_turnout: turnout,
       turnout_pct: reportingPct,
-
       dem_pct: demPct,
       gop_pct: gopPct,
       ind_pct: indPct,
-
       counted_votes: counted,
       votes,
       leader,
       leader_votes: leaderVotes,
       second_votes: secondVotes,
-      vote_lead: voteLead,
       total_votes: totalVotes,
+      vote_lead: voteLead,
       margin_pct: marginPct,
       called_party: calledParty,
-      status: totalVotes ? statusFromMargin(marginPct) : "Unreported"
+      status: totalVotes ? statusFromMargin(marginPct) : "Unreported",
+      is_poll_closed: r.is_poll_closed !== false,
+      poll_close_time: r.poll_close_time || "",
+      first_results_time: r.first_results_time || "",
+      poll_close_order: Number(r.poll_close_order || 0)
     };
   }
 
-  function normalizeCalledParty(calledParty, leader, reportingPct) {
-    const normalized = normalizeCandidateId(calledParty);
-    if (normalized) return normalized;
-    if (reportingPct >= 100) return leader;
-    return "";
-  }
-
   function statusFromMargin(margin) {
-    if (margin < 1) return "TCTC";
+    if (margin < 1) return "Tossup";
     if (margin < 3) return "Tilt";
     if (margin < 7) return "Lean";
     if (margin < 12) return "Likely";
     return "Safe";
   }
 
-  function buildRowIndexes() {
+  function buildIndexes() {
     rowByAbbr = {};
-    rowByState = {};
+    rowByName = {};
 
     rows.forEach(r => {
-      if (r.abbr) rowByAbbr[normalizeAbbr(r.abbr)] = r;
-      if (r.state_name) rowByState[normalizeName(r.state_name)] = r;
+      rowByAbbr[normalizeAbbr(r.abbr)] = r;
+      rowByName[normalizeName(r.state_name)] = r;
     });
   }
 
   function renderAll() {
-    if (!election) return;
-
     if (els.title) els.title.textContent = election.title || "Election Results";
     if (els.subtitle) els.subtitle.textContent = election.subtitle || "Live map";
 
@@ -459,18 +401,11 @@
     renderGroupedStates();
     drawMainMap();
 
-    if (els.lastUpdated) {
-      els.lastUpdated.textContent = "Updated " + new Date().toLocaleTimeString();
-    }
+    if (els.lastUpdated) els.lastUpdated.textContent = "Updated " + new Date().toLocaleTimeString();
   }
 
   function totals() {
-    const t = {
-      ev: {},
-      pv: {},
-      counted: 0,
-      expected: 0
-    };
+    const t = { ev: {}, pv: {}, counted: 0, expected: 0 };
 
     candidates.forEach(c => {
       t.ev[c.id] = 0;
@@ -517,7 +452,6 @@
     }
 
     if (els.evThreshold) els.evThreshold.style.left = `${pct(winThreshold, totalEv)}%`;
-
     if (els.evLeftLabel) els.evLeftLabel.textContent = t.ev[leftCandidate.id] || 0;
     if (els.evRightLabel) els.evRightLabel.textContent = t.ev[rightCandidate.id] || 0;
     if (els.toWinLabel) els.toWinLabel.textContent = `${winThreshold} TO WIN`;
@@ -536,9 +470,7 @@
       els.popularFillRight.style.width = `${pct(t.pv[rightCandidate.id], totalPv)}%`;
     }
 
-    if (els.nationalReporting) {
-      els.nationalReporting.textContent = `Estimated reporting: ${reporting.toFixed(1)}%`;
-    }
+    if (els.nationalReporting) els.nationalReporting.textContent = `Estimated reporting: ${reporting.toFixed(1)}%`;
 
     const winner = candidates.find(c => (t.ev[c.id] || 0) >= winThreshold);
 
@@ -560,9 +492,7 @@
     if (photo) {
       photo.src = c.image || "";
       photo.style.display = c.image ? "block" : "none";
-      photo.onerror = () => {
-        photo.style.display = "none";
-      };
+      photo.onerror = () => (photo.style.display = "none");
     }
 
     if (party) {
@@ -578,10 +508,7 @@
     }
 
     if (votes) {
-      votes.textContent = `${(t.pv[c.id] || 0).toLocaleString()} votes • ${pct(
-        t.pv[c.id],
-        totalPv
-      ).toFixed(1)}%`;
+      votes.textContent = `${(t.pv[c.id] || 0).toLocaleString()} votes • ${pct(t.pv[c.id], totalPv).toFixed(1)}%`;
     }
   }
 
@@ -590,60 +517,60 @@
 
     if (currentMapMode === "called") {
       els.legend.innerHTML = `
-        <div class="legend-item"><span class="legend-swatch" style="background:${findCandidate("gop")?.color || "#ef5a52"}"></span> GOP called</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${findCandidate("dem")?.color || "#40aaf7"}"></span> DNC called</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${findCandidate("ind")?.color || "#9b59b6"}"></span> IND called</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${defaultColors.unreported}"></span> Uncalled / no vote data</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${findCandidate("gop")?.color || colors.gop.safe}"></span> GOP called</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${findCandidate("dem")?.color || colors.dem.safe}"></span> DNC called</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${findCandidate("ind")?.color || colors.ind.safe}"></span> IND called</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${colors.unreported}"></span> Uncalled</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${colors.locked}"></span> Polls not closed</div>
       `;
       return;
     }
 
     if (currentMapMode === "lead") {
       els.legend.innerHTML = `
-        <div class="legend-item"><span class="legend-swatch" style="background:${palettes.dem.safe}"></span> Dem safe</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${palettes.dem.lean}"></span> Dem lead</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${palettes.dem.tctc}"></span> Dem very close</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${palettes.gop.tctc}"></span> GOP very close</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${palettes.gop.lean}"></span> GOP lead</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${palettes.gop.safe}"></span> GOP safe</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${defaultColors.unreported}"></span> No vote data</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${colors.dem.safe}"></span> DNC safe</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${colors.dem.likely}"></span> DNC likely</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${colors.dem.lean}"></span> DNC lean</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${colors.dem.tilt}"></span> DNC tilt</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${colors.tossup}"></span> Tossup</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${colors.gop.tilt}"></span> GOP tilt</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${colors.gop.lean}"></span> GOP lean</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${colors.gop.likely}"></span> GOP likely</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:${colors.gop.safe}"></span> GOP safe</div>
       `;
       return;
     }
 
-    if (currentMapMode === "turnout") {
-      els.legend.innerHTML = `
-        <div class="legend-item"><span class="legend-swatch" style="background:#283240"></span> 0–24% reporting</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:#3a4758"></span> 25–49% reporting</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:#55657a"></span> 50–74% reporting</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:#778ba3"></span> 75–94% reporting</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:#a4b4c6"></span> 95–100% reporting</div>
-      `;
-    }
+    els.legend.innerHTML = `
+      <div class="legend-item"><span class="legend-swatch" style="background:${colors.turnout[0]}"></span> 0–24% reporting</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:${colors.turnout[1]}"></span> 25–49% reporting</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:${colors.turnout[2]}"></span> 50–74% reporting</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:${colors.turnout[3]}"></span> 75–94% reporting</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:${colors.turnout[4]}"></span> 95–100% reporting</div>
+    `;
   }
 
   function renderTicker() {
     if (!els.ticker) return;
 
     const closest = rows
-      .filter(r => r.total_votes > 0)
+      .filter(r => r.total_votes > 0 && r.is_poll_closed)
       .sort((a, b) => a.margin_pct - b.margin_pct)
       .slice(0, 10);
 
-    els.ticker.innerHTML = closest
-      .map(r => {
-        const c = findCandidate(r.leader) || candidates[0];
-        return `
-          <div class="race-card" onclick="window.__openStateResult('${escAttr(r.abbr)}')">
-            <strong>
-              <span>${esc(r.state_name)}</span>
-              <span style="color:${c.color}">${esc(r.status)}</span>
-            </strong>
-            <span>${esc(c.shortName)} leads by ${r.margin_pct.toFixed(2)}% / ${r.vote_lead.toLocaleString()} votes</span>
-          </div>
-        `;
-      })
-      .join("");
+    els.ticker.innerHTML = closest.map(r => {
+      const c = findCandidate(r.leader) || candidates[0];
+
+      return `
+        <div class="race-card" onclick="window.__openStateResult('${escAttr(r.abbr)}')">
+          <strong>
+            <span>${esc(r.state_name)}</span>
+            <span style="color:${c.color}">${esc(r.status)}</span>
+          </strong>
+          <span>${esc(c.shortName)} leads by ${r.margin_pct.toFixed(2)}% / ${r.vote_lead.toLocaleString()} votes</span>
+        </div>
+      `;
+    }).join("");
   }
 
   function renderTable() {
@@ -655,6 +582,7 @@
       <tr>
         <th>State</th>
         <th>EV</th>
+        <th>Close</th>
         <th>Reporting</th>
         <th>DNC</th>
         <th>GOP</th>
@@ -667,7 +595,7 @@
 
     els.tableBody.innerHTML = rows
       .filter(r => !q || r.state_name.toLowerCase().includes(q) || r.abbr.toLowerCase().includes(q))
-      .sort((a, b) => a.state_name.localeCompare(b.state_name))
+      .sort((a, b) => a.poll_close_order - b.poll_close_order || a.state_name.localeCompare(b.state_name))
       .map(r => {
         const lead = findCandidate(r.leader) || candidates[0];
 
@@ -675,10 +603,11 @@
           <tr data-abbr="${escAttr(r.abbr)}">
             <td><strong>${esc(r.state_name)}</strong></td>
             <td>${r.electoral_votes}</td>
-            <td>${Number(r.turnout_pct || 0).toFixed(1)}%</td>
-            <td>${Number(r.dem_pct || 0).toFixed(1)}%</td>
-            <td>${Number(r.gop_pct || 0).toFixed(1)}%</td>
-            <td>${Number(r.ind_pct || 0).toFixed(1)}%</td>
+            <td>${esc(r.poll_close_time || "—")}</td>
+            <td>${r.is_poll_closed ? `${r.turnout_pct.toFixed(1)}%` : "Polls open"}</td>
+            <td>${r.dem_pct.toFixed(1)}%</td>
+            <td>${r.gop_pct.toFixed(1)}%</td>
+            <td>${r.ind_pct.toFixed(1)}%</td>
             <td><span class="party-pill" style="background:${lead.color}22;color:${lead.color}">${esc(lead.party)}</span></td>
             <td>${esc(r.status)}</td>
             <td>${r.vote_lead.toLocaleString()}</td>
@@ -693,16 +622,7 @@
   }
 
   function renderGroupedStates() {
-    const tableCard = document.querySelector(".table-card");
-    if (!tableCard) return;
-
-    let wrap = document.getElementById("grouped-state-lists");
-    if (!wrap) {
-      wrap = document.createElement("div");
-      wrap.id = "grouped-state-lists";
-      wrap.style.marginTop = "24px";
-      tableCard.appendChild(wrap);
-    }
+    if (!els.grouped) return;
 
     const q = (els.search?.value || "").trim().toLowerCase();
     const filtered = rows.filter(r => !q || r.state_name.toLowerCase().includes(q) || r.abbr.toLowerCase().includes(q));
@@ -716,66 +636,57 @@
     };
 
     filtered.forEach(r => {
-      const side = r.leader === "dem" ? "dem" : r.leader === "gop" ? "gop" : "ind";
+      if (!r.total_votes || !r.is_poll_closed) {
+        groups["Competitive"].push(r);
+        return;
+      }
 
-      if (side === "dem" && r.status === "Safe") groups["Solid Democrat"].push(r);
-      else if (side === "dem" && ["Likely", "Lean"].includes(r.status)) groups["Lean Democrat"].push(r);
-      else if (side === "gop" && ["Likely", "Lean"].includes(r.status)) groups["Lean Republican"].push(r);
-      else if (side === "gop" && r.status === "Safe") groups["Solid Republican"].push(r);
+      if (r.leader === "dem" && r.status === "Safe") groups["Solid Democrat"].push(r);
+      else if (r.leader === "dem") groups["Lean Democrat"].push(r);
+      else if (r.leader === "gop" && r.status === "Safe") groups["Solid Republican"].push(r);
+      else if (r.leader === "gop") groups["Lean Republican"].push(r);
       else groups["Competitive"].push(r);
     });
 
-    Object.keys(groups).forEach(group => {
-      groups[group].sort((a, b) => {
-        if (group === "Competitive") return a.margin_pct - b.margin_pct;
-        return a.state_name.localeCompare(b.state_name);
-      });
+    Object.values(groups).forEach(list => {
+      list.sort((a, b) => a.poll_close_order - b.poll_close_order || a.state_name.localeCompare(b.state_name));
     });
 
-    wrap.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;">
-        ${Object.entries(groups)
-          .map(([title, items]) => {
-            const headingColor =
-              title.includes("Democrat") ? "#40aaf7" :
-              title.includes("Republican") ? "#ef5a52" :
-              "#d6d6d6";
+    els.grouped.innerHTML = `
+      <div class="state-groups">
+        ${Object.entries(groups).map(([title, list]) => stateGroupHtml(title, list)).join("")}
+      </div>
+    `;
+  }
 
-            return `
-              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;">
-                <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.08);font-weight:800;color:${headingColor};">
-                  ${esc(title)}
-                </div>
-                <div style="padding:10px 12px;">
-                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
-                    <thead>
-                      <tr style="opacity:.7;">
-                        <th style="text-align:left;padding:6px;">State</th>
-                        <th style="text-align:right;padding:6px;">DEM</th>
-                        <th style="text-align:right;padding:6px;">GOP</th>
-                        <th style="text-align:right;padding:6px;">% Rep.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${
-                        items.length
-                          ? items.map(r => `
-                              <tr onclick="window.__openStateResult('${escAttr(r.abbr)}')" style="cursor:pointer;border-top:1px solid rgba(255,255,255,0.05);">
-                                <td style="padding:7px 6px;">${esc(r.state_name)}</td>
-                                <td style="padding:7px 6px;text-align:right;color:#40aaf7;">${Number(r.dem_pct || 0).toFixed(0)}%</td>
-                                <td style="padding:7px 6px;text-align:right;color:#ef5a52;">${Number(r.gop_pct || 0).toFixed(0)}%</td>
-                                <td style="padding:7px 6px;text-align:right;">${Number(r.turnout_pct || 0).toFixed(0)}%</td>
-                              </tr>
-                            `).join("")
-                          : `<tr><td colspan="4" style="padding:10px 6px;opacity:.6;">No states</td></tr>`
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            `;
-          })
-          .join("")}
+  function stateGroupHtml(title, list) {
+    return `
+      <div class="state-group-card">
+        <h3>${esc(title)}</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>State</th>
+              <th>DEM</th>
+              <th>GOP</th>
+              <th>% EXP.</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              list.length
+                ? list.map(r => `
+                    <tr onclick="window.__openStateResult('${escAttr(r.abbr)}')">
+                      <td>${esc(r.state_name)}</td>
+                      <td class="blue-cell">${r.dem_pct.toFixed(0)}%</td>
+                      <td class="red-cell">${r.gop_pct.toFixed(0)}%</td>
+                      <td>${r.is_poll_closed ? r.turnout_pct.toFixed(0) + "%" : "Open"}</td>
+                    </tr>
+                  `).join("")
+                : `<tr><td colspan="4" class="empty-cell">No states</td></tr>`
+            }
+          </tbody>
+        </table>
       </div>
     `;
   }
@@ -784,21 +695,20 @@
     if (!map?.loaded() || !geojson) return;
 
     const data = JSON.parse(JSON.stringify(geojson));
-    data.features = (data.features || [])
-      .filter(f => normalizeAbbr(getFeatureAbbr(f)) !== "PR")
-      .map(f => {
-        const row = findRowForFeature(f);
-        const abbr = normalizeAbbr(getFeatureAbbr(f));
-        const stateName = getFeatureName(f);
 
-        f.properties = f.properties || {};
-        f.properties.aprp_abbr = abbr;
-        f.properties.aprp_state_name = stateName;
-        f.properties.fill = row ? colorForRow(row) : defaultColors.unreported;
-        f.properties.hoverHtml = mapPopupHtml(row, abbr, stateName);
+    data.features = (data.features || []).filter(f => normalizeAbbr(getFeatureAbbr(f)) !== "PR").map(f => {
+      const row = findRowForFeature(f);
+      const abbr = normalizeAbbr(getFeatureAbbr(f));
+      const stateName = getFeatureName(f);
 
-        return f;
-      });
+      f.properties = f.properties || {};
+      f.properties.aprp_abbr = abbr;
+      f.properties.aprp_state_name = stateName;
+      f.properties.fill = row ? colorForRow(row) : colors.unreported;
+      f.properties.hoverHtml = mapPopupHtml(row, abbr, stateName);
+
+      return f;
+    });
 
     if (map.getSource("states")) {
       map.getSource("states").setData(data);
@@ -813,7 +723,7 @@
       source: "states",
       paint: {
         "fill-color": ["get", "fill"],
-        "fill-opacity": 0.88
+        "fill-opacity": 0.92
       }
     });
 
@@ -822,9 +732,9 @@
       type: "line",
       source: "states",
       paint: {
-        "line-color": "#ffffff",
-        "line-width": 1.1,
-        "line-opacity": 0.86
+        "line-color": "#f4f7fb",
+        "line-width": 1.08,
+        "line-opacity": 0.88
       }
     });
 
@@ -833,106 +743,99 @@
       const feature = e.features?.[0];
       if (!feature) return;
 
-      mapPopup
-        .setLngLat(e.lngLat)
-        .setHTML(feature.properties?.hoverHtml || `<div class="map-popup"><h3>${esc(feature.properties?.aprp_state_name || "State")}</h3></div>`)
-        .addTo(map);
+      popup.setLngLat(e.lngLat).setHTML(feature.properties.hoverHtml || "").addTo(map);
     });
 
     map.on("mouseleave", "states-fill", () => {
       map.getCanvas().style.cursor = "";
-      mapPopup?.remove();
+      popup?.remove();
     });
 
     map.on("click", "states-fill", e => {
-      const feature = e.features?.[0];
-      if (!feature) return;
-      openStateModal(feature.properties?.aprp_abbr);
+      const abbr = e.features?.[0]?.properties?.aprp_abbr;
+      if (abbr) openStateModal(abbr);
     });
   }
 
   function colorForRow(r) {
-    if (!r || !r.total_votes) return defaultColors.unreported;
+    if (!r) return colors.unreported;
+
+    if (!r.is_poll_closed) return colors.locked;
 
     if (currentMapMode === "called") {
-      if (!r.called_party) return defaultColors.unreported;
-      return findCandidate(r.called_party)?.color || defaultColors.tossup;
-    }
-
-    if (currentMapMode === "lead") {
-      const leader = normalizeCandidateId(r.leader);
-      const bucket = statusBucketKey(r.status);
-      return palettes[leader]?.[bucket] || findCandidate(leader)?.color || defaultColors.tossup;
+      if (!r.called_party) return colors.unreported;
+      return findCandidate(r.called_party)?.color || colors.unreported;
     }
 
     if (currentMapMode === "turnout") {
       const x = Number(r.turnout_pct || 0);
-      if (x >= 95) return "#a4b4c6";
-      if (x >= 75) return "#778ba3";
-      if (x >= 50) return "#55657a";
-      if (x >= 25) return "#3a4758";
-      return "#283240";
+      if (x >= 95) return colors.turnout[4];
+      if (x >= 75) return colors.turnout[3];
+      if (x >= 50) return colors.turnout[2];
+      if (x >= 25) return colors.turnout[1];
+      return colors.turnout[0];
     }
 
-    return defaultColors.unreported;
+    if (!r.total_votes) return colors.unreported;
+
+    if (r.status === "Tossup") return colors.tossup;
+
+    const leader = r.leader;
+    const bucket = statusBucket(r.status);
+
+    return colors[leader]?.[bucket] || colors.unreported;
   }
 
-  function statusBucketKey(status) {
+  function statusBucket(status) {
     if (status === "Safe") return "safe";
     if (status === "Likely") return "likely";
     if (status === "Lean") return "lean";
-    if (status === "Tilt") return "tilt";
-    return "tctc";
+    return "tilt";
   }
 
   function mapPopupHtml(r, abbr = "", fallbackStateName = "") {
     if (!r) {
       return `
-        <div class="map-popup" style="background:#f1f1f1;color:#222;border-radius:10px;padding:14px 16px;min-width:260px;">
-          <h3 style="margin:0 0 6px 0;font-size:24px;">${esc(fallbackStateName || abbr || "State")}</h3>
-          <p style="margin:0;font-size:14px;opacity:.75;">No state result found.</p>
+        <div class="map-popup">
+          <h3>${esc(fallbackStateName || abbr || "State")}</h3>
+          <p>No state result found.</p>
         </div>
       `;
     }
 
-    const ordered = [
-      { id: "gop", candidate: findCandidate("gop"), votes: r.votes.gop, pct: r.gop_pct },
-      { id: "dem", candidate: findCandidate("dem"), votes: r.votes.dem, pct: r.dem_pct },
-      { id: "ind", candidate: findCandidate("ind"), votes: r.votes.ind, pct: r.ind_pct }
-    ].filter(x => x.candidate);
-
-    const rowsHtml = ordered
-      .sort((a, b) => b.votes - a.votes)
-      .map(x => `
-        <tr>
-          <td style="padding:6px 4px;color:${x.candidate.color};font-weight:800;">${esc(x.candidate.name)}</td>
-          <td style="padding:6px 4px;text-align:right;">${esc(x.candidate.party)}</td>
-          <td style="padding:6px 4px;text-align:right;">${x.votes.toLocaleString()}</td>
-          <td style="padding:6px 4px;text-align:right;">${Number(x.pct).toFixed(1)}%</td>
-        </tr>
-      `)
-      .join("");
-
-    const flipTag = r.called_party ? "" : `<div style="display:inline-block;background:#f3e7e7;color:#972433;font-weight:800;font-size:12px;padding:4px 8px;border-radius:6px;margin-bottom:8px;">LIVE</div>`;
+    const candidateRows = [
+      { id: "gop", c: findCandidate("gop"), votes: r.votes.gop, pct: r.gop_pct },
+      { id: "dem", c: findCandidate("dem"), votes: r.votes.dem, pct: r.dem_pct },
+      { id: "ind", c: findCandidate("ind"), votes: r.votes.ind, pct: r.ind_pct }
+    ].filter(x => x.c).sort((a, b) => b.votes - a.votes);
 
     return `
-      <div class="map-popup" style="background:#f1f1f1;color:#222;border-radius:10px;padding:14px 16px;min-width:320px;box-shadow:0 10px 30px rgba(0,0,0,.22);">
-        <h3 style="margin:0 0 2px 0;font-size:22px;">${esc(r.state_name)}</h3>
-        <div style="font-size:14px;font-weight:700;margin-bottom:8px;">${r.electoral_votes} electoral votes</div>
-        ${flipTag}
-        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <div class="map-popup">
+        <h3>${esc(r.state_name)}</h3>
+        <div class="popup-sub">${r.electoral_votes} electoral votes</div>
+        <div class="popup-tag ${r.called_party ? "called" : "live"}">${r.called_party ? "CALLED" : "LIVE"}</div>
+        <table>
           <thead>
-            <tr style="opacity:.65;border-bottom:1px solid #d5d5d5;">
-              <th style="text-align:left;padding:6px 4px;">Candidate</th>
-              <th style="text-align:right;padding:6px 4px;">Party</th>
-              <th style="text-align:right;padding:6px 4px;">Votes</th>
-              <th style="text-align:right;padding:6px 4px;">Pct.</th>
+            <tr>
+              <th>Candidate</th>
+              <th>Party</th>
+              <th>Votes</th>
+              <th>Pct.</th>
             </tr>
           </thead>
-          <tbody>${rowsHtml}</tbody>
+          <tbody>
+            ${candidateRows.map(x => `
+              <tr>
+                <td style="color:${x.c.color};font-weight:900;">${esc(x.c.name)}</td>
+                <td>${esc(x.c.party)}</td>
+                <td>${x.votes.toLocaleString()}</td>
+                <td>${x.pct.toFixed(1)}%</td>
+              </tr>
+            `).join("")}
+          </tbody>
         </table>
-        <div style="margin-top:8px;font-size:13px;color:#555;">
-          ${Number(r.turnout_pct || 0).toFixed(1)}% reporting • ${r.counted_votes.toLocaleString()} counted votes
+        <div class="popup-foot">
+          ${r.is_poll_closed ? `${r.turnout_pct.toFixed(1)}% reporting • ${r.counted_votes.toLocaleString()} counted votes` : `Polls close ${esc(r.poll_close_time || "later")}`}
         </div>
       </div>
     `;
@@ -948,55 +851,34 @@
     const rightPct = Number(r[rightCandidate.id + "_pct"] || 0);
     const leader = findCandidate(r.leader) || candidates[0];
 
-    if (els.modalStateKicker) {
-      els.modalStateKicker.textContent = r.called_party ? "CALLED STATE" : "LIVE STATE RESULT";
-    }
-
-    if (els.modalStateTitle) els.modalStateTitle.textContent = r.state_name;
-    if (els.modalStateMeta) {
-      els.modalStateMeta.textContent = `${r.electoral_votes} EV • ${Number(r.turnout_pct || 0).toFixed(1)}% reporting`;
-    }
-
-    if (els.modalStatusPill) els.modalStatusPill.textContent = r.status;
-    if (els.modalStatusText) els.modalStatusText.textContent = r.status;
+    els.modalStateKicker.textContent = r.called_party ? "CALLED STATE" : "LIVE STATE RESULT";
+    els.modalStateTitle.textContent = r.state_name;
+    els.modalStateMeta.textContent = `${r.electoral_votes} EV • ${r.is_poll_closed ? `${r.turnout_pct.toFixed(1)}% reporting` : `Polls close ${r.poll_close_time || "later"}`}`;
+    els.modalStatusPill.textContent = r.status;
+    els.modalStatusText.textContent = r.status;
 
     setModalCandidate("left", leftCandidate, leftPct, leftVotes);
     setModalCandidate("right", rightCandidate, rightPct, rightVotes);
 
-    if (els.modalBarLeft) {
-      els.modalBarLeft.style.background = leftCandidate.color;
-      els.modalBarLeft.style.width = `${leftPct}%`;
-    }
+    els.modalBarLeft.style.background = leftCandidate.color;
+    els.modalBarRight.style.background = rightCandidate.color;
+    els.modalBarLeft.style.width = `${leftPct}%`;
+    els.modalBarRight.style.width = `${rightPct}%`;
 
-    if (els.modalBarRight) {
-      els.modalBarRight.style.background = rightCandidate.color;
-      els.modalBarRight.style.width = `${rightPct}%`;
-    }
-
-    if (els.modalCountedVotes) els.modalCountedVotes.textContent = r.counted_votes.toLocaleString();
-
-    if (els.modalLeaderName) {
-      els.modalLeaderName.textContent = leader.name;
-      els.modalLeaderName.style.color = leader.color;
-    }
-
-    if (els.modalLeadMargin) {
-      els.modalLeadMargin.textContent = `${r.margin_pct.toFixed(2)}% / ${r.vote_lead.toLocaleString()} votes`;
-    }
+    els.modalCountedVotes.textContent = r.counted_votes.toLocaleString();
+    els.modalLeaderName.textContent = leader ? leader.name : "—";
+    els.modalLeaderName.style.color = leader ? leader.color : "#fff";
+    els.modalLeadMargin.textContent = `${r.margin_pct.toFixed(2)}% / ${r.vote_lead.toLocaleString()} votes`;
 
     const ind = findCandidate("ind");
-    if (ind && (r.votes.ind || 0) > 0) {
-      els.modalThirdCandidate?.classList.remove("hidden");
-      if (els.modalThirdCandidate) {
-        els.modalThirdCandidate.innerHTML = `${esc(ind.name)}: ${Number(r.ind_pct || 0).toFixed(1)}% / ${(
-          r.votes.ind || 0
-        ).toLocaleString()} votes`;
-      }
+    if (ind && r.votes.ind > 0) {
+      els.modalThirdCandidate.classList.remove("hidden");
+      els.modalThirdCandidate.innerHTML = `${esc(ind.name)}: ${r.ind_pct.toFixed(1)}% / ${r.votes.ind.toLocaleString()} votes`;
     } else {
-      els.modalThirdCandidate?.classList.add("hidden");
+      els.modalThirdCandidate.classList.add("hidden");
     }
 
-    els.stateModal?.classList.remove("hidden");
+    els.stateModal.classList.remove("hidden");
   }
 
   function setModalCandidate(side, c, candidatePct, candidateVotes) {
@@ -1006,36 +888,26 @@
     const pctEl = side === "left" ? els.modalLeftPct : els.modalRightPct;
     const votes = side === "left" ? els.modalLeftVotes : els.modalRightVotes;
 
-    if (photo) {
-      photo.src = c.image || "";
-      photo.style.display = c.image ? "block" : "none";
-      photo.onerror = () => {
-        photo.style.display = "none";
-      };
-    }
+    photo.src = c.image || "";
+    photo.style.display = c.image ? "block" : "none";
+    photo.onerror = () => (photo.style.display = "none");
 
-    if (name) name.textContent = c.name;
-    if (party) {
-      party.textContent = c.party;
-      party.style.color = c.color;
-    }
-
-    if (pctEl) {
-      pctEl.textContent = `${candidatePct.toFixed(1)}%`;
-      pctEl.style.color = c.color;
-    }
-
-    if (votes) votes.textContent = `${candidateVotes.toLocaleString()} votes`;
+    name.textContent = c.name;
+    party.textContent = c.party;
+    party.style.color = c.color;
+    pctEl.textContent = `${candidatePct.toFixed(1)}%`;
+    pctEl.style.color = c.color;
+    votes.textContent = `${candidateVotes.toLocaleString()} votes`;
   }
 
   function closeStateModal() {
-    els.stateModal?.classList.add("hidden");
+    els.stateModal.classList.add("hidden");
   }
 
   function openPathModal() {
-    els.pathModal?.classList.remove("hidden");
-    if (els.pathLeftName) els.pathLeftName.textContent = leftCandidate.shortName || leftCandidate.party;
-    if (els.pathRightName) els.pathRightName.textContent = rightCandidate.shortName || rightCandidate.party;
+    els.pathModal.classList.remove("hidden");
+    els.pathLeftName.textContent = leftCandidate.shortName || leftCandidate.party;
+    els.pathRightName.textContent = rightCandidate.shortName || rightCandidate.party;
 
     if (!pathMap) {
       setTimeout(initPathMap, 80);
@@ -1049,24 +921,13 @@
   }
 
   function closePathModal() {
-    els.pathModal?.classList.add("hidden");
+    els.pathModal.classList.add("hidden");
   }
 
   function initPathMap() {
     pathMap = new maplibregl.Map({
       container: "path-map",
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            attribution: "© OpenStreetMap contributors"
-          }
-        },
-        layers: [{ id: "osm", type: "raster", source: "osm" }]
-      },
+      style: map.getStyle(),
       center: [-98.5795, 39.8283],
       zoom: 3.15
     });
@@ -1081,17 +942,17 @@
     if (!pathMap?.loaded() || !geojson) return;
 
     const data = JSON.parse(JSON.stringify(geojson));
-    data.features = (data.features || [])
-      .filter(f => normalizeAbbr(getFeatureAbbr(f)) !== "PR")
-      .map(f => {
-        const abbr = normalizeAbbr(getFeatureAbbr(f));
-        const row = findRowForFeature(f);
 
-        f.properties = f.properties || {};
-        f.properties.aprp_abbr = abbr;
-        f.properties.fill = pathColor(abbr, row);
-        return f;
-      });
+    data.features = data.features.filter(f => normalizeAbbr(getFeatureAbbr(f)) !== "PR").map(f => {
+      const row = findRowForFeature(f);
+      const abbr = normalizeAbbr(getFeatureAbbr(f));
+
+      f.properties = f.properties || {};
+      f.properties.aprp_abbr = abbr;
+      f.properties.fill = pathColor(abbr, row);
+
+      return f;
+    });
 
     if (pathMap.getSource("path-states")) {
       pathMap.getSource("path-states").setData(data);
@@ -1106,7 +967,7 @@
       source: "path-states",
       paint: {
         "fill-color": ["get", "fill"],
-        "fill-opacity": 0.9
+        "fill-opacity": 0.92
       }
     });
 
@@ -1125,38 +986,24 @@
       const abbr = e.features?.[0]?.properties?.aprp_abbr;
       if (abbr) cyclePathState(abbr);
     });
-
-    pathMap.on("mousemove", "path-states-fill", () => {
-      pathMap.getCanvas().style.cursor = "pointer";
-    });
-
-    pathMap.on("mouseleave", "path-states-fill", () => {
-      pathMap.getCanvas().style.cursor = "";
-    });
   }
 
   function cyclePathState(abbr) {
     const key = normalizeAbbr(abbr);
     const current = pathSelections[key] || "";
 
-    if (!current) {
-      pathSelections[key] = leftCandidate.id;
-    } else if (current === leftCandidate.id) {
-      pathSelections[key] = rightCandidate.id;
-    } else {
-      delete pathSelections[key];
-    }
+    if (!current) pathSelections[key] = leftCandidate.id;
+    else if (current === leftCandidate.id) pathSelections[key] = rightCandidate.id;
+    else delete pathSelections[key];
 
     drawPathMap();
     updatePathTotals();
   }
 
   function pathColor(abbr, row) {
-    const key = normalizeAbbr(abbr);
-    const selected = pathSelections[key];
-
-    if (selected) return findCandidate(selected)?.color || defaultColors.tossup;
-    return row ? colorForRow(row) : defaultColors.unreported;
+    const selected = pathSelections[normalizeAbbr(abbr)];
+    if (selected) return findCandidate(selected)?.color || colors.unreported;
+    return row ? colorForRow(row) : colors.unreported;
   }
 
   function updatePathTotals() {
@@ -1165,51 +1012,30 @@
 
     rows.forEach(r => {
       const selected = pathSelections[normalizeAbbr(r.abbr)];
-      if (selected === leftCandidate.id) leftEv += Number(r.electoral_votes || 0);
-      if (selected === rightCandidate.id) rightEv += Number(r.electoral_votes || 0);
+      if (selected === leftCandidate.id) leftEv += r.electoral_votes;
+      if (selected === rightCandidate.id) rightEv += r.electoral_votes;
     });
 
-    if (els.pathLeftEv) {
-      els.pathLeftEv.textContent = `${leftEv} EV`;
-      els.pathLeftEv.style.color = leftCandidate.color;
-    }
-
-    if (els.pathRightEv) {
-      els.pathRightEv.textContent = `${rightEv} EV`;
-      els.pathRightEv.style.color = rightCandidate.color;
-    }
+    els.pathLeftEv.textContent = `${leftEv} EV`;
+    els.pathRightEv.textContent = `${rightEv} EV`;
+    els.pathLeftEv.style.color = leftCandidate.color;
+    els.pathRightEv.style.color = rightCandidate.color;
   }
 
   function findRowForFeature(feature) {
     const abbr = normalizeAbbr(getFeatureAbbr(feature));
-    const stateName = normalizeName(getFeatureName(feature));
-
-    return rowByAbbr[abbr] || rowByState[stateName] || null;
+    const name = normalizeName(getFeatureName(feature));
+    return rowByAbbr[abbr] || rowByName[name] || null;
   }
 
   function getFeatureAbbr(f) {
     const p = f?.properties || {};
-    return (
-      p.abbr ||
-      p.STUSPS ||
-      p.postal ||
-      p.STATE_ABBR ||
-      p.state_abbr ||
-      p.state ||
-      ""
-    );
+    return p.abbr || p.STUSPS || p.postal || p.STATE_ABBR || p.state_abbr || "";
   }
 
   function getFeatureName(f) {
     const p = f?.properties || {};
-    return (
-      p.NAME ||
-      p.name ||
-      p.STATE_NAME ||
-      p.state_name ||
-      p.State ||
-      ""
-    );
+    return p.NAME || p.name || p.STATE_NAME || p.state_name || "";
   }
 
   function normalizeAbbr(s) {
@@ -1217,15 +1043,7 @@
   }
 
   function normalizeName(s) {
-    return String(s || "")
-      .trim()
-      .toLowerCase()
-      .replace(/\./g, "")
-      .replace(/\s+/g, " ");
-  }
-
-  function candidateName(id) {
-    return findCandidate(id)?.shortName || String(id || "").toUpperCase();
+    return String(s || "").trim().toLowerCase().replace(/\./g, "").replace(/\s+/g, " ");
   }
 
   function pct(a, b) {
@@ -1237,15 +1055,13 @@
   }
 
   function esc(s) {
-    return String(s ?? "").replace(/[&<>'"]/g, m => {
-      return {
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "'": "&#39;",
-        '"': "&quot;"
-      }[m];
-    });
+    return String(s ?? "").replace(/[&<>'"]/g, m => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;"
+    }[m]));
   }
 
   function escAttr(s) {
@@ -1253,13 +1069,12 @@
   }
 
   function showError(msg) {
-    if (!els.error) return;
     els.error.textContent = msg;
     els.error.classList.remove("hidden");
   }
 
   function hideError() {
-    els.error?.classList.add("hidden");
+    els.error.classList.add("hidden");
   }
 
   window.__openStateResult = openStateModal;
