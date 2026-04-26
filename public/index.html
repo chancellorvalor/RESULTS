@@ -10,8 +10,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css?v=9000" />
 </head>
+
 <body>
   <div id="loader" class="loader">Loading live results...</div>
 
@@ -44,6 +45,7 @@
         <div class="candidate-photo-wrap">
           <img id="left-photo" class="candidate-photo" src="" alt="">
         </div>
+
         <div class="candidate-meta">
           <div id="left-party" class="candidate-party">DNC</div>
           <div id="left-name" class="candidate-name">Candidate</div>
@@ -76,12 +78,15 @@
         <div class="national-popular">
           <div class="popular-row">
             <span id="popular-left-label">DNC</span>
+
             <div class="popular-bar">
               <div id="popular-fill-left" class="popular-fill left-fill"></div>
               <div id="popular-fill-right" class="popular-fill right-fill"></div>
             </div>
+
             <span id="popular-right-label">GOP</span>
           </div>
+
           <div class="popular-summary">
             <span id="national-reporting">Reporting: 0.0%</span>
             <span id="last-updated">Updated --</span>
@@ -93,6 +98,7 @@
         <div class="candidate-photo-wrap">
           <img id="right-photo" class="candidate-photo" src="" alt="">
         </div>
+
         <div class="candidate-meta">
           <div id="right-party" class="candidate-party">GOP</div>
           <div id="right-name" class="candidate-name">Candidate</div>
@@ -154,6 +160,7 @@
           <h2>State Results</h2>
           <p>Votes are calculated from admin-entered turnout and percentages.</p>
         </div>
+
         <input id="state-search" class="state-search" placeholder="Search state..." />
       </div>
 
@@ -178,12 +185,14 @@
           <h2 id="modal-state-title">State</h2>
           <p id="modal-state-meta">0 EV • 0% reporting</p>
         </div>
+
         <div id="modal-status-pill" class="status-pill">TCTC</div>
       </div>
 
       <div class="modal-grid">
         <div class="modal-candidate left">
           <img id="modal-left-photo" class="modal-photo" src="" alt="">
+
           <div class="modal-candidate-info">
             <div id="modal-left-name" class="modal-name">Candidate</div>
             <div id="modal-left-party" class="modal-party">DNC</div>
@@ -194,6 +203,7 @@
 
         <div class="modal-candidate right">
           <img id="modal-right-photo" class="modal-photo" src="" alt="">
+
           <div class="modal-candidate-info">
             <div id="modal-right-name" class="modal-name">Candidate</div>
             <div id="modal-right-party" class="modal-party">GOP</div>
@@ -215,14 +225,17 @@
           <span class="stat-label">Counted Votes</span>
           <strong id="modal-counted-votes">0</strong>
         </div>
+
         <div class="stat-box">
           <span class="stat-label">Vote Leader</span>
           <strong id="modal-leader-name">—</strong>
         </div>
+
         <div class="stat-box">
           <span class="stat-label">Lead Margin</span>
           <strong id="modal-lead-margin">0.00%</strong>
         </div>
+
         <div class="stat-box">
           <span class="stat-label">Projection</span>
           <strong id="modal-status-text">TCTC</strong>
@@ -263,9 +276,9 @@
     </div>
   </div>
 
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=6"></script>
-  <script src="./app.js?v=6"></script>
+  <script src="../shared/config.js?v=9000"></script>
+  <script src="./app.js?v=9000"></script>
 </body>
 </html>
