@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=9000" />
+  <link rel="stylesheet" href="./styles.css?v=12000" />
 </head>
 
 <body>
@@ -41,11 +41,10 @@
     </section>
 
     <section class="scoreboard-card">
-      <div class="candidate-side left" id="candidate-left">
+      <div class="candidate-side left">
         <div class="candidate-photo-wrap">
           <img id="left-photo" class="candidate-photo" src="" alt="">
         </div>
-
         <div class="candidate-meta">
           <div id="left-party" class="candidate-party">DNC</div>
           <div id="left-name" class="candidate-name">Candidate</div>
@@ -78,12 +77,10 @@
         <div class="national-popular">
           <div class="popular-row">
             <span id="popular-left-label">DNC</span>
-
             <div class="popular-bar">
               <div id="popular-fill-left" class="popular-fill left-fill"></div>
               <div id="popular-fill-right" class="popular-fill right-fill"></div>
             </div>
-
             <span id="popular-right-label">GOP</span>
           </div>
 
@@ -94,11 +91,10 @@
         </div>
       </div>
 
-      <div class="candidate-side right" id="candidate-right">
+      <div class="candidate-side right">
         <div class="candidate-photo-wrap">
           <img id="right-photo" class="candidate-photo" src="" alt="">
         </div>
-
         <div class="candidate-meta">
           <div id="right-party" class="candidate-party">GOP</div>
           <div id="right-name" class="candidate-name">Candidate</div>
@@ -113,10 +109,13 @@
         <div class="card-head">
           <div>
             <h2>Live Electoral Map</h2>
-            <p>Click a state for detailed results and projection status.</p>
+            <p>Hover over a state for a result card. Click a state for full details.</p>
           </div>
 
           <div class="map-actions">
+            <button class="secondary-btn map-mode-btn active" data-mode="lead">Strength of lead</button>
+            <button class="secondary-btn map-mode-btn" data-mode="called">Called races</button>
+            <button class="secondary-btn map-mode-btn" data-mode="turnout">Vote count status</button>
             <button id="reset-map" class="secondary-btn">Reset map</button>
             <button id="toggle-legend" class="secondary-btn">Legend</button>
           </div>
@@ -144,7 +143,7 @@
         <div class="status-guide">
           <h3>Projection Guide</h3>
           <ul>
-            <li><strong>TCTC</strong> — margin under 1%</li>
+            <li><strong>Tossup</strong> — margin under 1%</li>
             <li><strong>Tilt</strong> — margin 1% to under 3%</li>
             <li><strong>Lean</strong> — margin 3% to under 7%</li>
             <li><strong>Likely</strong> — margin 7% to under 12%</li>
@@ -158,13 +157,14 @@
       <div class="card-head">
         <div>
           <h2>State Results</h2>
-          <p>Votes are calculated from admin-entered turnout and percentages.</p>
+          <p>State-by-state results grouped by current race rating.</p>
         </div>
-
         <input id="state-search" class="state-search" placeholder="Search state..." />
       </div>
 
-      <div class="table-wrap">
+      <div id="grouped-state-lists"></div>
+
+      <div class="table-wrap state-table-wrap">
         <table>
           <thead id="state-table-head"></thead>
           <tbody id="state-table-body"></tbody>
@@ -185,14 +185,12 @@
           <h2 id="modal-state-title">State</h2>
           <p id="modal-state-meta">0 EV • 0% reporting</p>
         </div>
-
-        <div id="modal-status-pill" class="status-pill">TCTC</div>
+        <div id="modal-status-pill" class="status-pill">Tossup</div>
       </div>
 
       <div class="modal-grid">
         <div class="modal-candidate left">
           <img id="modal-left-photo" class="modal-photo" src="" alt="">
-
           <div class="modal-candidate-info">
             <div id="modal-left-name" class="modal-name">Candidate</div>
             <div id="modal-left-party" class="modal-party">DNC</div>
@@ -203,7 +201,6 @@
 
         <div class="modal-candidate right">
           <img id="modal-right-photo" class="modal-photo" src="" alt="">
-
           <div class="modal-candidate-info">
             <div id="modal-right-name" class="modal-name">Candidate</div>
             <div id="modal-right-party" class="modal-party">GOP</div>
@@ -225,20 +222,17 @@
           <span class="stat-label">Counted Votes</span>
           <strong id="modal-counted-votes">0</strong>
         </div>
-
         <div class="stat-box">
           <span class="stat-label">Vote Leader</span>
           <strong id="modal-leader-name">—</strong>
         </div>
-
         <div class="stat-box">
           <span class="stat-label">Lead Margin</span>
           <strong id="modal-lead-margin">0.00%</strong>
         </div>
-
         <div class="stat-box">
           <span class="stat-label">Projection</span>
-          <strong id="modal-status-text">TCTC</strong>
+          <strong id="modal-status-text">Tossup</strong>
         </div>
       </div>
 
@@ -278,7 +272,7 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=9001"></script>
-  <script src="./app.js?v=9001"></script>
+  <script src="../shared/config.js?v=12000"></script>
+  <script src="./app.js?v=12000"></script>
 </body>
 </html>
