@@ -15,7 +15,7 @@
       <div>
         <p class="kicker">APRP ADMIN</p>
         <h1>Live Election Control</h1>
-        <p>Enter turnout, reporting, vote percentages, and calls.</p>
+        <p>Enter election settings, candidate photos, turnout, vote percentages, and calls.</p>
       </div>
       <div class="actions">
         <button id="save-election">Save Election Settings</button>
@@ -45,6 +45,18 @@
           <input id="total-electoral-votes" type="number" />
         </label>
       </div>
+    </section>
+
+    <section class="card election-card">
+      <div class="section-head compact">
+        <div>
+          <h2>Candidates</h2>
+          <p>Set candidate names, party labels, colors, and photo URLs.</p>
+        </div>
+        <button id="save-candidates">Save Candidates</button>
+      </div>
+
+      <div id="candidate-fields" class="candidate-fields"></div>
     </section>
 
     <section class="card">
