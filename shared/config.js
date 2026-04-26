@@ -1,6 +1,6 @@
 window.APRP_CONFIG = {
-  supabaseUrl: "PASTE_YOUR_SUPABASE_PROJECT_URL_HERE",
-  supabaseAnonKey: "PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY_HERE",
+  supabaseUrl: "https://uaifsjxubccrtellepyi.supabase.co",
+  supabaseAnonKey: "sb_publishable_dD5_nafXPgr95KGZgyM3JQ_X7ziDKR-",
 
   defaultElectionSlug: "2004-president",
   refreshSeconds: 30
