@@ -5,26 +5,102 @@
   const els = {
     loader: document.getElementById("loader"),
     title: document.getElementById("election-title"),
+    year: document.getElementById("election-year"),
     subtitle: document.getElementById("election-subtitle"),
-    scoreboard: document.getElementById("scoreboard"),
+    error: document.getElementById("error-box"),
+
     winnerCard: document.getElementById("winner-card"),
     winnerName: document.getElementById("winner-name"),
+
+    leftPhoto: document.getElementById("left-photo"),
+    leftParty: document.getElementById("left-party"),
+    leftName: document.getElementById("left-name"),
+    leftEv: document.getElementById("left-ev"),
+    leftVotes: document.getElementById("left-votes"),
+    leftShort: document.getElementById("left-short"),
+
+    rightPhoto: document.getElementById("right-photo"),
+    rightParty: document.getElementById("right-party"),
+    rightName: document.getElementById("right-name"),
+    rightEv: document.getElementById("right-ev"),
+    rightVotes: document.getElementById("right-votes"),
+    rightShort: document.getElementById("right-short"),
+
+    evFillLeft: document.getElementById("ev-fill-left"),
+    evFillRight: document.getElementById("ev-fill-right"),
+    evThreshold: document.getElementById("ev-threshold"),
+    evLeftLabel: document.getElementById("ev-left-label"),
+    evRightLabel: document.getElementById("ev-right-label"),
+    toWinLabel: document.getElementById("to-win-label"),
+    totalEvLabel: document.getElementById("total-ev-label"),
+
+    popularLeftLabel: document.getElementById("popular-left-label"),
+    popularRightLabel: document.getElementById("popular-right-label"),
+    popularFillLeft: document.getElementById("popular-fill-left"),
+    popularFillRight: document.getElementById("popular-fill-right"),
+    nationalReporting: document.getElementById("national-reporting"),
     lastUpdated: document.getElementById("last-updated"),
+
+    resetMap: document.getElementById("reset-map"),
+    toggleLegend: document.getElementById("toggle-legend"),
     legend: document.getElementById("legend"),
-    error: document.getElementById("error-box"),
+
     tableHead: document.getElementById("state-table-head"),
     tableBody: document.getElementById("state-table-body"),
     search: document.getElementById("state-search"),
     ticker: document.getElementById("closest-races"),
+
+    stateModal: document.getElementById("state-modal"),
+    modalClose: document.getElementById("modal-close"),
+    modalCloseBackdrop: document.getElementById("modal-close-backdrop"),
+
+    modalStateKicker: document.getElementById("modal-state-kicker"),
+    modalStateTitle: document.getElementById("modal-state-title"),
+    modalStateMeta: document.getElementById("modal-state-meta"),
+    modalStatusPill: document.getElementById("modal-status-pill"),
+
+    modalLeftPhoto: document.getElementById("modal-left-photo"),
+    modalLeftName: document.getElementById("modal-left-name"),
+    modalLeftParty: document.getElementById("modal-left-party"),
+    modalLeftPct: document.getElementById("modal-left-pct"),
+    modalLeftVotes: document.getElementById("modal-left-votes"),
+
+    modalRightPhoto: document.getElementById("modal-right-photo"),
+    modalRightName: document.getElementById("modal-right-name"),
+    modalRightParty: document.getElementById("modal-right-party"),
+    modalRightPct: document.getElementById("modal-right-pct"),
+    modalRightVotes: document.getElementById("modal-right-votes"),
+
+    modalBarLeft: document.getElementById("modal-bar-left"),
+    modalBarRight: document.getElementById("modal-bar-right"),
+    modalCountedVotes: document.getElementById("modal-counted-votes"),
+    modalLeaderName: document.getElementById("modal-leader-name"),
+    modalLeadMargin: document.getElementById("modal-lead-margin"),
+    modalStatusText: document.getElementById("modal-status-text"),
+    modalThirdCandidate: document.getElementById("modal-third-candidate"),
+
+    pathButton: document.getElementById("path-to-victory"),
+    pathModal: document.getElementById("path-modal"),
+    pathClose: document.getElementById("path-close"),
+    pathCloseBackdrop: document.getElementById("path-close-backdrop"),
+    pathMap: document.getElementById("path-map"),
+    pathLeftName: document.getElementById("path-left-name"),
+    pathRightName: document.getElementById("path-right-name"),
+    pathLeftEv: document.getElementById("path-left-ev"),
+    pathRightEv: document.getElementById("path-right-ev"),
   };
 
   let map;
+  let pathMap;
   let geojson;
   let election;
   let rows = [];
   let candidates = [];
+  let leftCandidate;
+  let rightCandidate;
+  let pathSelections = {};
 
-  const colors = {
+  const defaultColors = {
     uncalled: "#34495e",
     tossup: "#95a5a6",
   };
@@ -43,15 +119,22 @@
   }
 
   function wireButtons() {
-    document.getElementById("reset-map").onclick = () => {
+    els.resetMap.onclick = () => {
       map?.flyTo({ center: [-98.5795, 39.8283], zoom: 3.45 });
     };
 
-    document.getElementById("toggle-legend").onclick = () => {
+    els.toggleLegend.onclick = () => {
       els.legend.classList.toggle("hidden");
     };
 
     els.search.oninput = () => renderTable();
+
+    els.modalClose.onclick = closeStateModal;
+    els.modalCloseBackdrop.onclick = closeStateModal;
+
+    els.pathButton.onclick = openPathModal;
+    els.pathClose.onclick = closePathModal;
+    els.pathCloseBackdrop.onclick = closePathModal;
   }
 
   function initMap() {
@@ -76,12 +159,13 @@
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 
     map.on("load", () => {
-      if (geojson) drawMap();
+      if (geojson) drawMainMap();
     });
   }
 
   async function loadGeoJson() {
     const res = await fetch("./data/states.geojson");
+    if (!res.ok) throw new Error("Could not load states.geojson");
     geojson = await res.json();
   }
 
@@ -99,6 +183,8 @@
 
       election = electionData;
       candidates = normalizeCandidates(election.candidates);
+      leftCandidate = findCandidate("dem") || candidates[1] || candidates[0];
+      rightCandidate = findCandidate("gop") || candidates[0];
 
       const { data: resultRows, error: resultsError } = await supabase
         .from("state_results")
@@ -109,99 +195,121 @@
       if (resultsError) throw resultsError;
 
       rows = (resultRows || []).map(calculateRow);
+
       renderAll();
     } catch (err) {
       showError(
-        "Could not load Supabase results. Check shared/config.js, Supabase URL/key, RLS policies, and that you ran sql/schema.sql. " +
-          (err.message || err)
+        "Could not load live results. Check shared/config.js, Supabase setup, and whether the schema was run. " +
+        (err.message || err)
       );
     } finally {
-      els.loader.classList.add("hide");
-      setTimeout(() => {
-        els.loader.style.display = "none";
-      }, 300);
+      els.loader.style.display = "none";
     }
   }
 
   function normalizeCandidates(raw) {
-    const c = Array.isArray(raw) ? raw : JSON.parse(raw || "[]");
+    const parsed = Array.isArray(raw) ? raw : JSON.parse(raw || "[]");
 
-    return c.length
-      ? c
-      : [
-          {
-            id: "gop",
-            party: "GOP",
-            name: "Republican Candidate",
-            shortName: "GOP",
-            color: "#e74c3c",
-          },
-          {
-            id: "dem",
-            party: "DNC",
-            name: "Democratic Candidate",
-            shortName: "DNC",
-            color: "#3498db",
-          },
-          {
-            id: "ind",
-            party: "IND",
-            name: "Independent",
-            shortName: "IND",
-            color: "#9b59b6",
-          },
-        ];
+    const base = parsed.length ? parsed : [
+      {
+        id: "gop",
+        party: "GOP",
+        name: "Republican Candidate",
+        shortName: "GOP",
+        color: "#e74c3c",
+        image: "",
+      },
+      {
+        id: "dem",
+        party: "DNC",
+        name: "Democratic Candidate",
+        shortName: "DNC",
+        color: "#3498db",
+        image: "",
+      },
+      {
+        id: "ind",
+        party: "IND",
+        name: "Independent",
+        shortName: "IND",
+        color: "#9b59b6",
+        image: "",
+      },
+    ];
+
+    return base.map(c => ({
+      id: c.id,
+      party: c.party || c.id?.toUpperCase() || "",
+      name: c.name || c.party || "",
+      shortName: c.shortName || c.party || c.name || "",
+      color: c.color || "#64748b",
+      image: c.image || "",
+    }));
+  }
+
+  function findCandidate(id) {
+    return candidates.find(c => c.id === id);
   }
 
   function calculateRow(r) {
     const turnout = Number(r.total_turnout || 0);
-    const counted = Math.round((turnout * Number(r.turnout_pct || 0)) / 100);
-
-    const vals = {
-      gop_pct: Number(r.gop_pct || 0),
-      dem_pct: Number(r.dem_pct || 0),
-      ind_pct: Number(r.ind_pct || 0),
-    };
+    const reportingPct = Number(r.turnout_pct || 0);
+    const counted = Math.round((turnout * reportingPct) / 100);
 
     const votes = {
-      gop: Math.round((counted * vals.gop_pct) / 100),
-      dem: Math.round((counted * vals.dem_pct) / 100),
-      ind: Math.round((counted * vals.ind_pct) / 100),
+      gop: Math.round((counted * Number(r.gop_pct || 0)) / 100),
+      dem: Math.round((counted * Number(r.dem_pct || 0)) / 100),
+      ind: Math.round((counted * Number(r.ind_pct || 0)) / 100),
     };
 
-    const leader = ["gop", "dem", "ind"].sort((a, b) => votes[b] - votes[a])[0];
+    const voteEntries = Object.entries(votes);
+    const sorted = voteEntries.sort((a, b) => b[1] - a[1]);
+    const leader = sorted[0]?.[0] || "gop";
+    const leaderVotes = sorted[0]?.[1] || 0;
+    const secondVotes = sorted[1]?.[1] || 0;
     const totalVotes = votes.gop + votes.dem + votes.ind;
+    const rawMargin = Math.max(0, leaderVotes - secondVotes);
+    const marginPct = totalVotes ? (rawMargin / totalVotes) * 100 : 0;
 
-    const secondPlace = Math.max(
-      ...Object.entries(votes)
-        .filter(([key]) => key !== leader)
-        .map(([, value]) => value)
-    );
-
-    const margin = totalVotes ? (Math.abs(votes[leader] - secondPlace) / totalVotes) * 100 : 0;
-    const called = r.called_party || (Number(r.turnout_pct) >= 100 ? leader : "");
+    const status = totalVotes ? statusFromMargin(marginPct) : "Unreported";
+    const called = r.called_party || (reportingPct >= 100 ? leader : "");
 
     return {
       ...r,
       counted_votes: counted,
       votes,
       leader,
+      leader_votes: leaderVotes,
+      second_votes: secondVotes,
+      vote_lead: rawMargin,
       called_party: called,
-      margin_pct: margin,
+      margin_pct: marginPct,
       total_votes: totalVotes,
+      status,
     };
   }
 
+  function statusFromMargin(margin) {
+    if (margin < 1) return "TCTC";
+    if (margin < 3) return "Tilt";
+    if (margin < 7) return "Lean";
+    if (margin < 12) return "Likely";
+    return "Safe";
+  }
+
   function renderAll() {
-    els.title.textContent = election.title;
-    els.subtitle.textContent = election.subtitle || "";
+    els.title.textContent = election.title || "Election Results";
+    els.subtitle.textContent = election.subtitle || "Live map";
+    els.year.textContent = election.year || "";
+    els.year.classList.toggle("hidden", !election.year);
+
     document.title = election.title || "APRP Live Results";
 
     renderScoreboard();
-    buildLegend();
-    renderTable();
+    renderLegend();
     renderTicker();
-    drawMap();
+    renderTable();
+    drawMainMap();
 
     els.lastUpdated.textContent = "Updated " + new Date().toLocaleTimeString();
   }
@@ -214,16 +322,16 @@
       expected: 0,
     };
 
-    candidates.forEach((c) => {
+    candidates.forEach(c => {
       t.ev[c.id] = 0;
       t.pv[c.id] = 0;
     });
 
-    rows.forEach((r) => {
+    rows.forEach(r => {
       t.counted += r.counted_votes;
       t.expected += Number(r.total_turnout || 0);
 
-      candidates.forEach((c) => {
+      candidates.forEach(c => {
         t.pv[c.id] += r.votes[c.id] || 0;
       });
 
@@ -236,32 +344,39 @@
   }
 
   function renderScoreboard() {
-    const [a, b] = candidates;
     const t = totals();
+    const totalEv = Number(election.total_electoral_votes || 538);
+    const winThreshold = Number(election.win_threshold || 270);
     const totalPv = candidates.reduce((sum, c) => sum + (t.pv[c.id] || 0), 0);
     const reporting = t.expected ? Math.min(100, (t.counted / t.expected) * 100) : 0;
 
-    els.scoreboard.innerHTML = `
-      ${candidateCard(a, t, totalPv)}
-      <div class="meter-wrap">
-        <div class="meter-meta">
-          <span>0</span>
-          <strong>${election.win_threshold} TO WIN</strong>
-          <span>${election.total_electoral_votes}</span>
-        </div>
-        <div class="ev-meter">
-          <div class="ev-fill" style="left:0;background:${a.color};width:${pct(t.ev[a.id], election.total_electoral_votes)}%"></div>
-          <div class="ev-fill" style="right:0;background:${b.color};width:${pct(t.ev[b.id], election.total_electoral_votes)}%"></div>
-          <div class="ev-threshold" style="left:${pct(election.win_threshold, election.total_electoral_votes)}%"></div>
-          <div class="ev-label" style="left:10px">${t.ev[a.id] || 0}</div>
-          <div class="ev-label" style="right:10px">${t.ev[b.id] || 0}</div>
-        </div>
-        <div class="reporting">Estimated reporting: ${reporting.toFixed(1)}%</div>
-      </div>
-      ${candidateCard(b, t, totalPv)}
-    `;
+    setCandidateTop("left", leftCandidate, t, totalPv);
+    setCandidateTop("right", rightCandidate, t, totalPv);
 
-    const winner = candidates.find((c) => (t.ev[c.id] || 0) >= election.win_threshold);
+    els.leftShort.textContent = leftCandidate.shortName || leftCandidate.party;
+    els.rightShort.textContent = rightCandidate.shortName || rightCandidate.party;
+
+    els.evFillLeft.style.background = leftCandidate.color;
+    els.evFillRight.style.background = rightCandidate.color;
+    els.evFillLeft.style.width = `${pct(t.ev[leftCandidate.id], totalEv)}%`;
+    els.evFillRight.style.width = `${pct(t.ev[rightCandidate.id], totalEv)}%`;
+    els.evThreshold.style.left = `${pct(winThreshold, totalEv)}%`;
+
+    els.evLeftLabel.textContent = t.ev[leftCandidate.id] || 0;
+    els.evRightLabel.textContent = t.ev[rightCandidate.id] || 0;
+
+    els.toWinLabel.textContent = `${winThreshold} TO WIN`;
+    els.totalEvLabel.textContent = totalEv;
+
+    els.popularLeftLabel.textContent = leftCandidate.party;
+    els.popularRightLabel.textContent = rightCandidate.party;
+    els.popularFillLeft.style.background = leftCandidate.color;
+    els.popularFillRight.style.background = rightCandidate.color;
+    els.popularFillLeft.style.width = `${pct(t.pv[leftCandidate.id], totalPv)}%`;
+    els.popularFillRight.style.width = `${pct(t.pv[rightCandidate.id], totalPv)}%`;
+    els.nationalReporting.textContent = `Estimated reporting: ${reporting.toFixed(1)}%`;
+
+    const winner = candidates.find(c => (t.ev[c.id] || 0) >= winThreshold);
 
     if (winner) {
       els.winnerCard.classList.remove("hidden");
@@ -271,36 +386,56 @@
     }
   }
 
-  function candidateCard(c, t, totalPv) {
-    return `
-      <article class="candidate" style="--candidate-color:${c.color}">
-        <img src="${c.image || ""}" alt="" onerror="this.style.display='none'" />
-        <div>
-          <div class="candidate-party" style="color:${c.color}">${esc(c.party)}</div>
-          <div class="candidate-name">${esc(c.name)}</div>
-          <div class="candidate-ev" style="color:${c.color}">${t.ev[c.id] || 0} EV</div>
-          <div class="candidate-pv">${(t.pv[c.id] || 0).toLocaleString()} votes · ${pct(t.pv[c.id] || 0, totalPv).toFixed(1)}%</div>
-        </div>
-      </article>
+  function setCandidateTop(side, c, t, totalPv) {
+    const photo = side === "left" ? els.leftPhoto : els.rightPhoto;
+    const party = side === "left" ? els.leftParty : els.rightParty;
+    const name = side === "left" ? els.leftName : els.rightName;
+    const ev = side === "left" ? els.leftEv : els.rightEv;
+    const votes = side === "left" ? els.leftVotes : els.rightVotes;
+
+    photo.src = c.image || "";
+    photo.style.display = c.image ? "block" : "none";
+    party.textContent = c.party;
+    party.style.color = c.color;
+    name.textContent = c.name;
+    ev.textContent = `${t.ev[c.id] || 0} EV`;
+    ev.style.color = c.color;
+    votes.textContent = `${(t.pv[c.id] || 0).toLocaleString()} votes • ${pct(t.pv[c.id], totalPv).toFixed(1)}%`;
+  }
+
+  function renderLegend() {
+    els.legend.innerHTML = candidates.map(c => `
+      <div class="legend-item">
+        <span class="legend-swatch" style="background:${c.color}"></span>
+        ${esc(c.party)}
+      </div>
+    `).join("") + `
+      <div class="legend-item">
+        <span class="legend-swatch" style="background:${defaultColors.uncalled}"></span>
+        Unreported
+      </div>
     `;
   }
 
-  function buildLegend() {
-    els.legend.innerHTML = `
-      <b>Legend</b><br>
-      ${candidates
-        .map(
-          (c) => `
-            <div>
-              <i style="--swatch:${c.color}"></i>
-              ${esc(c.party)} lead/call
-            </div>
-          `
-        )
-        .join("")}
-      <div><i style="--swatch:${colors.tossup}"></i>Tossup</div>
-      <div><i style="--swatch:${colors.uncalled}"></i>Unreported</div>
-    `;
+  function renderTicker() {
+    const closest = rows
+      .filter(r => r.total_votes > 0)
+      .sort((a, b) => a.margin_pct - b.margin_pct)
+      .slice(0, 10);
+
+    els.ticker.innerHTML = closest.map(r => {
+      const c = findCandidate(r.leader) || candidates[0];
+
+      return `
+        <div class="race-card" onclick="window.__openStateResult('${escAttr(r.abbr)}')">
+          <strong>
+            <span>${esc(r.state_name)}</span>
+            <span style="color:${c.color}">${esc(r.status)}</span>
+          </strong>
+          <span>${esc(c.shortName)} leads by ${r.margin_pct.toFixed(2)}% / ${r.vote_lead.toLocaleString()} votes</span>
+        </div>
+      `;
+    }).join("");
   }
 
   function renderTable() {
@@ -311,79 +446,59 @@
         <th>State</th>
         <th>EV</th>
         <th>Reporting</th>
-        ${candidates.map((c) => `<th>${esc(c.party)}</th>`).join("")}
+        ${candidates.map(c => `<th>${esc(c.party)}</th>`).join("")}
         <th>Leader</th>
-        <th>Margin</th>
+        <th>Status</th>
+        <th>Lead</th>
       </tr>
     `;
 
     els.tableBody.innerHTML = rows
-      .filter((r) => !q || r.state_name.toLowerCase().includes(q) || r.abbr.toLowerCase().includes(q))
-      .map((r) => {
-        const lead = candidates.find((c) => c.id === r.leader) || candidates[0];
+      .filter(r => !q || r.state_name.toLowerCase().includes(q) || r.abbr.toLowerCase().includes(q))
+      .map(r => {
+        const lead = findCandidate(r.leader) || candidates[0];
 
         return `
-          <tr data-abbr="${r.abbr}">
-            <td>${esc(r.state_name)}</td>
+          <tr data-abbr="${escAttr(r.abbr)}">
+            <td><strong>${esc(r.state_name)}</strong></td>
             <td>${r.electoral_votes}</td>
-            <td>${Number(r.turnout_pct).toFixed(1)}%</td>
-            ${candidates
-              .map(
-                (c) => `
-                  <td>
-                    ${(r.votes[c.id] || 0).toLocaleString()}<br>
-                    <small>${Number(r[c.id + "_pct"] || 0).toFixed(1)}%</small>
-                  </td>
-                `
-              )
-              .join("")}
+            <td>${Number(r.turnout_pct || 0).toFixed(1)}%</td>
+            ${candidates.map(c => `
+              <td>
+                ${(r.votes[c.id] || 0).toLocaleString()}<br>
+                <small>${Number(r[c.id + "_pct"] || 0).toFixed(1)}%</small>
+              </td>
+            `).join("")}
             <td><span class="party-pill" style="background:${lead.color}22;color:${lead.color}">${esc(lead.party)}</span></td>
-            <td>${r.margin_pct.toFixed(2)}%</td>
+            <td>${esc(r.status)}</td>
+            <td>${r.vote_lead.toLocaleString()}</td>
           </tr>
         `;
       })
       .join("");
 
-    [...els.tableBody.querySelectorAll("tr")].forEach((tr) => {
-      tr.onclick = () => zoomState(tr.dataset.abbr);
+    [...els.tableBody.querySelectorAll("tr")].forEach(tr => {
+      tr.onclick = () => openStateModal(tr.dataset.abbr);
     });
   }
 
-  function renderTicker() {
-    const items = rows
-      .filter((r) => r.total_votes > 0)
-      .sort((a, b) => a.margin_pct - b.margin_pct)
-      .slice(0, 10)
-      .map((r) => {
-        const c = candidates.find((x) => x.id === r.leader) || candidates[0];
-
-        return `
-          <span class="race-item">
-            <b style="color:${c.color}">${esc(r.state_name)}:</b>
-            ${esc(c.shortName || c.party)} leads by ${r.margin_pct.toFixed(2)}%
-          </span>
-        `;
-      })
-      .join("");
-
-    els.ticker.innerHTML = items + items;
-  }
-
-  function drawMap() {
+  function drawMainMap() {
     if (!map?.loaded() || !geojson) return;
 
-    const byAbbr = Object.fromEntries(rows.map((r) => [r.abbr, r]));
+    const byAbbr = Object.fromEntries(rows.map(r => [r.abbr, r]));
     const data = JSON.parse(JSON.stringify(geojson));
 
     data.features = data.features
-      .filter((f) => (f.properties.abbr || f.properties.STUSPS || f.properties.postal) !== "PR")
-      .map((f) => {
-        const abbr = f.properties.abbr || f.properties.STUSPS || f.properties.postal;
+      .filter(f => getFeatureAbbr(f) !== "PR")
+      .map(f => {
+        const abbr = getFeatureAbbr(f);
         const r = byAbbr[abbr];
 
         f.properties.abbr = abbr;
-        f.properties.fill = r ? colorFor(r) : colors.uncalled;
-        f.properties.label = r ? `${r.state_name}: ${r.turnout_pct}% reporting` : f.properties.NAME || abbr;
+        f.properties.fill = r ? colorForRow(r) : defaultColors.uncalled;
+        f.properties.label = r
+          ? `${r.state_name}: ${r.status} ${candidateName(r.leader)}`
+          : f.properties.NAME || abbr;
 
         return f;
       });
@@ -399,7 +514,7 @@
         source: "states",
         paint: {
           "fill-color": ["get", "fill"],
-          "fill-opacity": 0.86,
+          "fill-opacity": 0.88,
         },
       });
 
@@ -410,14 +525,20 @@
         paint: {
           "line-color": "#ffffff",
           "line-width": 1,
+          "line-opacity": 0.82,
         },
       });
 
       const popup = new maplibregl.Popup({ closeButton: false, offset: 15 });
 
-      map.on("mousemove", "states-fill", (e) => {
+      map.on("mousemove", "states-fill", e => {
         map.getCanvas().style.cursor = "pointer";
-        popup.setLngLat(e.lngLat).setHTML(popupHtml(byAbbr[e.features[0].properties.abbr])).addTo(map);
+        const r = byAbbr[e.features[0].properties.abbr];
+
+        popup
+          .setLngLat(e.lngLat)
+          .setHTML(mapPopupHtml(r))
+          .addTo(map);
       });
 
       map.on("mouseleave", "states-fill", () => {
@@ -425,98 +546,57 @@
         popup.remove();
       });
 
-      map.on("click", "states-fill", (e) => {
-        zoomState(e.features[0].properties.abbr);
+      map.on("click", "states-fill", e => {
+        openStateModal(e.features[0].properties.abbr);
       });
     }
   }
 
-  function colorFor(r) {
-    const c = candidates.find((x) => x.id === (r.called_party || r.leader));
-
-    if (!r.total_votes) return colors.uncalled;
-
-    return c?.color || colors.tossup;
+  function colorForRow(r) {
+    if (!r.total_votes) return defaultColors.uncalled;
+    const c = findCandidate(r.called_party || r.leader);
+    return c?.color || defaultColors.tossup;
   }
 
-  function popupHtml(r) {
+  function mapPopupHtml(r) {
     if (!r) {
-      return `
-        <div class="popup">
-          <header><h3>No data</h3></header>
-        </div>
-      `;
+      return `<div class="map-popup"><h3>No data</h3><p>No state result found.</p></div>`;
     }
 
+    const c = findCandidate(r.leader) || candidates[0];
+
     return `
-      <div class="popup">
-        <header>
-          <h3>${esc(r.state_name)}</h3>
-          <p>${r.electoral_votes} EV • ${Number(r.turnout_pct).toFixed(1)}% reporting • ${r.counted_votes.toLocaleString()} counted</p>
-        </header>
-        <div class="rows">
-          ${candidates
-            .map(
-              (c) => `
-                <div class="popup-row ${r.leader === c.id ? "winner" : ""}">
-                  <div>
-                    <strong style="color:${c.color}">${esc(c.name)}</strong>
-                    <small>${(r.votes[c.id] || 0).toLocaleString()} votes</small>
-                  </div>
-                  <b>${Number(r[c.id + "_pct"] || 0).toFixed(1)}%</b>
-                </div>
-              `
-            )
-            .join("")}
-        </div>
+      <div class="map-popup">
+        <h3>${esc(r.state_name)}</h3>
+        <p>${r.electoral_votes} EV • ${r.status} ${esc(c.shortName)} • ${r.margin_pct.toFixed(2)}%</p>
       </div>
     `;
   }
 
-  function zoomState(abbr) {
-    const f = geojson.features.find((x) => (x.properties.abbr || x.properties.STUSPS) === abbr);
+  function openStateModal(abbr) {
+    const r = rows.find(x => x.abbr === abbr);
+    if (!r) return;
 
-    if (!f) return;
+    const leftVotes = r.votes[leftCandidate.id] || 0;
+    const rightVotes = r.votes[rightCandidate.id] || 0;
+    const leftPct = Number(r[leftCandidate.id + "_pct"] || 0);
+    const rightPct = Number(r[rightCandidate.id + "_pct"] || 0);
+    const leader = findCandidate(r.leader) || candidates[0];
 
-    const coords = [];
-    collect(f.geometry.coordinates, coords);
+    els.modalStateKicker.textContent = r.called_party ? "CALLED STATE" : "LIVE STATE RESULT";
+    els.modalStateTitle.textContent = r.state_name;
+    els.modalStateMeta.textContent = `${r.electoral_votes} EV • ${Number(r.turnout_pct || 0).toFixed(1)}% reporting`;
+    els.modalStatusPill.textContent = r.status;
+    els.modalStatusText.textContent = r.status;
 
-    const lng = coords.reduce((sum, c) => sum + c[0], 0) / coords.length;
-    const lat = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
+    setModalCandidate("left", leftCandidate, leftPct, leftVotes);
+    setModalCandidate("right", rightCandidate, rightPct, rightVotes);
 
-    map.flyTo({ center: [lng, lat], zoom: 5 });
-  }
+    els.modalBarLeft.style.background = leftCandidate.color;
+    els.modalBarRight.style.background = rightCandidate.color;
+    els.modalBarLeft.style.width = `${leftPct}%`;
+    els.modalBarRight.style.width = `${rightPct}%`;
 
-  function collect(a, out) {
-    if (typeof a[0] === "number") {
-      out.push(a);
-    } else {
-      a.forEach((x) => collect(x, out));
-    }
-  }
-
-  function pct(a, b) {
-    return b ? (Number(a || 0) / Number(b)) * 100 : 0;
-  }
-
-  function esc(s) {
-    return String(s ?? "").replace(/[&<>'"]/g, (m) => {
-      return {
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "'": "&#39;",
-        '"': "&quot;",
-      }[m];
-    });
-  }
-
-  function showError(msg) {
-    els.error.textContent = msg;
-    els.error.classList.remove("hidden");
-  }
-
-  function hideError() {
-    els.error.classList.add("hidden");
-  }
-})();
+    els.modalCountedVotes.textContent = r.counted_votes.toLocaleString();
+    els.modalLeaderName.textContent = leader.name;
+    els.modalLea
