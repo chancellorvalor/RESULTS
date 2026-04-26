@@ -1,1 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>APRP Live Results</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="loader" class="loader">Loading live results…</div>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="kicker">APRP LIVE RESULTS</p>
+        <h1 id="election-title">Election Results</h1>
+        <p id="election-subtitle">Live map</p>
+      </div>
+      <section id="scoreboard" class="scoreboard"></section>
+    </header>
 
+    <section class="main-layout">
+      <section class="map-panel card">
+        <div id="map"></div>
+        <div class="map-toolbar">
+          <button id="reset-map">Reset map</button>
+          <button id="toggle-legend">Legend</button>
+          <span id="last-updated">Not loaded</span>
+        </div>
+        <div id="legend" class="legend hidden"></div>
+        <div id="error-box" class="error-box hidden"></div>
+      </section>
+
+      <aside class="side-panel">
+        <section id="winner-card" class="winner-card card hidden">
+          <p>Projected winner</p>
+          <h2 id="winner-name"></h2>
+        </section>
+        <section class="table-card card">
+          <div class="table-header">
+            <div>
+              <h2>State Results</h2>
+              <p>Votes are calculated from admin-entered percentages.</p>
+            </div>
+            <input id="state-search" placeholder="Search state…" />
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead id="state-table-head"></thead>
+              <tbody id="state-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </aside>
+    </section>
+
+    <footer class="ticker">
+      <strong>KEY RACES</strong>
+      <div class="ticker-window"><div id="closest-races"></div></div>
+    </footer>
+  </main>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="../shared/config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
