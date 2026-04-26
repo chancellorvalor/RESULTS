@@ -53,7 +53,6 @@
     stateModal: document.getElementById("state-modal"),
     modalClose: document.getElementById("modal-close"),
     modalCloseBackdrop: document.getElementById("modal-close-backdrop"),
-
     modalStateKicker: document.getElementById("modal-state-kicker"),
     modalStateTitle: document.getElementById("modal-state-title"),
     modalStateMeta: document.getElementById("modal-state-meta"),
@@ -83,7 +82,6 @@
     pathModal: document.getElementById("path-modal"),
     pathClose: document.getElementById("path-close"),
     pathCloseBackdrop: document.getElementById("path-close-backdrop"),
-    pathMap: document.getElementById("path-map"),
     pathLeftName: document.getElementById("path-left-name"),
     pathRightName: document.getElementById("path-right-name"),
     pathLeftEv: document.getElementById("path-left-ev"),
@@ -119,14 +117,8 @@
   }
 
   function wireButtons() {
-    els.resetMap.onclick = () => {
-      map?.flyTo({ center: [-98.5795, 39.8283], zoom: 3.45 });
-    };
-
-    els.toggleLegend.onclick = () => {
-      els.legend.classList.toggle("hidden");
-    };
-
+    els.resetMap.onclick = () => map?.flyTo({ center: [-98.5795, 39.8283], zoom: 3.45 });
+    els.toggleLegend.onclick = () => els.legend.classList.toggle("hidden");
     els.search.oninput = () => renderTable();
 
     els.modalClose.onclick = closeStateModal;
@@ -183,7 +175,8 @@
 
       election = electionData;
       candidates = normalizeCandidates(election.candidates);
-      leftCandidate = findCandidate("dem") || candidates[1] || candidates[0];
+
+      leftCandidate = findCandidate("dem") || findCandidate("dnc") || candidates[1] || candidates[0];
       rightCandidate = findCandidate("gop") || candidates[0];
 
       const { data: resultRows, error: resultsError } = await supabase
@@ -208,7 +201,13 @@
   }
 
   function normalizeCandidates(raw) {
-    const parsed = Array.isArray(raw) ? raw : JSON.parse(raw || "[]");
+    let parsed = [];
+
+    try {
+      parsed = Array.isArray(raw) ? raw : JSON.parse(raw || "[]");
+    } catch {
+      parsed = [];
+    }
 
     const base = parsed.length ? parsed : [
       {
@@ -262,17 +261,13 @@
       ind: Math.round((counted * Number(r.ind_pct || 0)) / 100),
     };
 
-    const voteEntries = Object.entries(votes);
-    const sorted = voteEntries.sort((a, b) => b[1] - a[1]);
+    const sorted = Object.entries(votes).sort((a, b) => b[1] - a[1]);
     const leader = sorted[0]?.[0] || "gop";
     const leaderVotes = sorted[0]?.[1] || 0;
     const secondVotes = sorted[1]?.[1] || 0;
     const totalVotes = votes.gop + votes.dem + votes.ind;
-    const rawMargin = Math.max(0, leaderVotes - secondVotes);
-    const marginPct = totalVotes ? (rawMargin / totalVotes) * 100 : 0;
-
-    const status = totalVotes ? statusFromMargin(marginPct) : "Unreported";
-    const called = r.called_party || (reportingPct >= 100 ? leader : "");
+    const voteLead = Math.max(0, leaderVotes - secondVotes);
+    const marginPct = totalVotes ? (voteLead / totalVotes) * 100 : 0;
 
     return {
       ...r,
@@ -281,11 +276,11 @@
       leader,
       leader_votes: leaderVotes,
       second_votes: secondVotes,
-      vote_lead: rawMargin,
-      called_party: called,
+      vote_lead: voteLead,
+      called_party: r.called_party || (reportingPct >= 100 ? leader : ""),
       margin_pct: marginPct,
       total_votes: totalVotes,
-      status,
+      status: totalVotes ? statusFromMargin(marginPct) : "Unreported",
     };
   }
 
@@ -300,6 +295,7 @@
   function renderAll() {
     els.title.textContent = election.title || "Election Results";
     els.subtitle.textContent = election.subtitle || "Live map";
+
     els.year.textContent = election.year || "";
     els.year.classList.toggle("hidden", !election.year);
 
@@ -370,10 +366,12 @@
 
     els.popularLeftLabel.textContent = leftCandidate.party;
     els.popularRightLabel.textContent = rightCandidate.party;
+
     els.popularFillLeft.style.background = leftCandidate.color;
     els.popularFillRight.style.background = rightCandidate.color;
     els.popularFillLeft.style.width = `${pct(t.pv[leftCandidate.id], totalPv)}%`;
     els.popularFillRight.style.width = `${pct(t.pv[rightCandidate.id], totalPv)}%`;
+
     els.nationalReporting.textContent = `Estimated reporting: ${reporting.toFixed(1)}%`;
 
     const winner = candidates.find(c => (t.ev[c.id] || 0) >= winThreshold);
@@ -395,6 +393,8 @@
 
     photo.src = c.image || "";
     photo.style.display = c.image ? "block" : "none";
+    photo.onerror = () => photo.style.display = "none";
+
     party.textContent = c.party;
     party.style.color = c.color;
     name.textContent = c.name;
@@ -435,10 +435,8 @@
           <span>${esc(c.shortName)} leads by ${r.margin_pct.toFixed(2)}% / ${r.vote_lead.toLocaleString()} votes</span>
         </div>
       `;
-    }).join("");
-  }
-
-  function renderTable() {
+    }).join(""); 
+    function renderTable() {
     const q = (els.search.value || "").toLowerCase();
 
     els.tableHead.innerHTML = `
@@ -599,4 +597,228 @@
 
     els.modalCountedVotes.textContent = r.counted_votes.toLocaleString();
     els.modalLeaderName.textContent = leader.name;
-    els.modalLea
+    els.modalLeaderName.style.color = leader.color;
+    els.modalLeadMargin.textContent = `${r.margin_pct.toFixed(2)}% / ${r.vote_lead.toLocaleString()} votes`;
+
+    const ind = findCandidate("ind");
+
+    if (ind && (r.votes.ind || 0) > 0) {
+      els.modalThirdCandidate.classList.remove("hidden");
+      els.modalThirdCandidate.innerHTML =
+        `${esc(ind.name)}: ${Number(r.ind_pct || 0).toFixed(1)}% / ${(r.votes.ind || 0).toLocaleString()} votes`;
+    } else {
+      els.modalThirdCandidate.classList.add("hidden");
+    }
+
+    els.stateModal.classList.remove("hidden");
+  }
+
+  function setModalCandidate(side, c, candidatePct, candidateVotes) {
+    const photo = side === "left" ? els.modalLeftPhoto : els.modalRightPhoto;
+    const name = side === "left" ? els.modalLeftName : els.modalRightName;
+    const party = side === "left" ? els.modalLeftParty : els.modalRightParty;
+    const pctEl = side === "left" ? els.modalLeftPct : els.modalRightPct;
+    const votes = side === "left" ? els.modalLeftVotes : els.modalRightVotes;
+
+    photo.src = c.image || "";
+    photo.style.display = c.image ? "block" : "none";
+    photo.onerror = () => photo.style.display = "none";
+
+    name.textContent = c.name;
+    party.textContent = c.party;
+    party.style.color = c.color;
+    pctEl.textContent = `${candidatePct.toFixed(1)}%`;
+    pctEl.style.color = c.color;
+    votes.textContent = `${candidateVotes.toLocaleString()} votes`;
+  }
+
+  function closeStateModal() {
+    els.stateModal.classList.add("hidden");
+  }
+
+  function openPathModal() {
+    els.pathModal.classList.remove("hidden");
+    els.pathLeftName.textContent = leftCandidate.shortName || leftCandidate.party;
+    els.pathRightName.textContent = rightCandidate.shortName || rightCandidate.party;
+
+    if (!pathMap) {
+      setTimeout(initPathMap, 80);
+    } else {
+      setTimeout(() => {
+        pathMap.resize();
+        drawPathMap();
+        updatePathTotals();
+      }, 80);
+    }
+  }
+
+  function closePathModal() {
+    els.pathModal.classList.add("hidden");
+  }
+
+  function initPathMap() {
+    pathMap = new maplibregl.Map({
+      container: "path-map",
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            attribution: "© OpenStreetMap contributors",
+          },
+        },
+        layers: [{ id: "osm", type: "raster", source: "osm" }],
+      },
+      center: [-98.5795, 39.8283],
+      zoom: 3.15,
+    });
+
+    pathMap.on("load", () => {
+      drawPathMap();
+      updatePathTotals();
+    });
+  }
+
+  function drawPathMap() {
+    if (!pathMap?.loaded() || !geojson) return;
+
+    const byAbbr = Object.fromEntries(rows.map(r => [r.abbr, r]));
+    const data = JSON.parse(JSON.stringify(geojson));
+
+    data.features = data.features
+      .filter(f => getFeatureAbbr(f) !== "PR")
+      .map(f => {
+        const abbr = getFeatureAbbr(f);
+        const r = byAbbr[abbr];
+
+        f.properties.abbr = abbr;
+        f.properties.fill = pathColor(abbr, r);
+
+        return f;
+      });
+
+    if (pathMap.getSource("path-states")) {
+      pathMap.getSource("path-states").setData(data);
+    } else {
+      pathMap.addSource("path-states", { type: "geojson", data });
+
+      pathMap.addLayer({
+        id: "path-states-fill",
+        type: "fill",
+        source: "path-states",
+        paint: {
+          "fill-color": ["get", "fill"],
+          "fill-opacity": 0.9,
+        },
+      });
+
+      pathMap.addLayer({
+        id: "path-states-outline",
+        type: "line",
+        source: "path-states",
+        paint: {
+          "line-color": "#fff",
+          "line-width": 1,
+          "line-opacity": 0.8,
+        },
+      });
+
+      pathMap.on("click", "path-states-fill", e => {
+        cyclePathState(e.features[0].properties.abbr);
+      });
+
+      pathMap.on("mousemove", "path-states-fill", () => {
+        pathMap.getCanvas().style.cursor = "pointer";
+      });
+
+      pathMap.on("mouseleave", "path-states-fill", () => {
+        pathMap.getCanvas().style.cursor = "";
+      });
+    }
+  }
+
+  function cyclePathState(abbr) {
+    const current = pathSelections[abbr] || "";
+
+    if (!current) {
+      pathSelections[abbr] = leftCandidate.id;
+    } else if (current === leftCandidate.id) {
+      pathSelections[abbr] = rightCandidate.id;
+    } else {
+      delete pathSelections[abbr];
+    }
+
+    drawPathMap();
+    updatePathTotals();
+  }
+
+  function pathColor(abbr, row) {
+    const selected = pathSelections[abbr];
+
+    if (selected) {
+      return findCandidate(selected)?.color || defaultColors.tossup;
+    }
+
+    return row ? colorForRow(row) : defaultColors.uncalled;
+  }
+
+  function updatePathTotals() {
+    let leftEv = 0;
+    let rightEv = 0;
+
+    rows.forEach(r => {
+      const selected = pathSelections[r.abbr];
+
+      if (selected === leftCandidate.id) leftEv += Number(r.electoral_votes || 0);
+      if (selected === rightCandidate.id) rightEv += Number(r.electoral_votes || 0);
+    });
+
+    els.pathLeftEv.textContent = `${leftEv} EV`;
+    els.pathRightEv.textContent = `${rightEv} EV`;
+
+    els.pathLeftEv.style.color = leftCandidate.color;
+    els.pathRightEv.style.color = rightCandidate.color;
+  }
+
+  function getFeatureAbbr(f) {
+    return f.properties.abbr || f.properties.STUSPS || f.properties.postal || f.properties.STATE_ABBR;
+  }
+
+  function candidateName(id) {
+    return findCandidate(id)?.shortName || id?.toUpperCase() || "";
+  }
+
+  function pct(a, b) {
+    return b ? (Number(a || 0) / Number(b)) * 100 : 0;
+  }
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>'"]/g, m => {
+      return {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;",
+      }[m];
+    });
+  }
+
+  function escAttr(s) {
+    return esc(s).replace(/`/g, "&#96;");
+  }
+
+  function showError(msg) {
+    els.error.textContent = msg;
+    els.error.classList.remove("hidden");
+  }
+
+  function hideError() {
+    els.error.classList.add("hidden");
+  }
+
+  window.__openStateResult = openStateModal;
+})();
+}
