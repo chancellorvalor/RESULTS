@@ -4,11 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>APRP Election Admin</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css" />
+
+  <link rel="stylesheet" href="./styles.css?v=5000" />
 </head>
+
 <body>
   <main class="admin-shell">
     <header class="topbar">
@@ -17,6 +20,7 @@
         <h1>Live Election Control</h1>
         <p>Control the public results page, candidate information, turnout, vote percentages, and calls.</p>
       </div>
+
       <div class="actions">
         <button id="save-election">Save Election Settings</button>
         <button id="refresh-data">Refresh</button>
@@ -27,26 +31,31 @@
 
     <section class="card election-card">
       <h2>Election Settings</h2>
+
       <div class="grid">
         <label>
           Election Year
           <input id="election-year" placeholder="2004" />
         </label>
+
         <label>
           Election Title
-          <input id="election-title" />
+          <input id="election-title" placeholder="2004 Presidential Election" />
         </label>
+
         <label>
           Subtitle
-          <input id="election-subtitle" />
+          <input id="election-subtitle" placeholder="Live presidential election results" />
         </label>
+
         <label>
           Win Threshold
-          <input id="win-threshold" type="number" />
+          <input id="win-threshold" type="number" placeholder="270" />
         </label>
+
         <label>
           Total Electoral Votes
-          <input id="total-electoral-votes" type="number" />
+          <input id="total-electoral-votes" type="number" placeholder="538" />
         </label>
       </div>
     </section>
@@ -57,6 +66,7 @@
           <h2>Candidates</h2>
           <p>Set candidate names, party labels, colors, short names, and photo URLs.</p>
         </div>
+
         <button id="save-candidates">Save Candidates</button>
       </div>
 
@@ -69,6 +79,7 @@
           <h2>State Inputs</h2>
           <p>Total turnout is expected turnout. Turnout % is how much has reported so far.</p>
         </div>
+
         <input id="state-search" placeholder="Search state..." />
       </div>
 
@@ -87,6 +98,7 @@
               <th>Save</th>
             </tr>
           </thead>
+
           <tbody id="state-rows"></tbody>
         </table>
       </div>
@@ -94,7 +106,7 @@
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js"></script>
-  <script src="./app.js"></script>
+  <script src="../shared/config.js?v=5000"></script>
+  <script src="./app.js?v=5000"></script>
 </body>
 </html>
