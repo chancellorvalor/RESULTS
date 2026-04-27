@@ -1,135 +1,347 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>APRP Archives</title>
+(() => {
+  const cfg = window.APRP_CONFIG || {};
+  const supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  const els = {
+    error: document.getElementById("error-box"),
+    currentTitle: document.getElementById("current-title"),
+    currentSummary: document.getElementById("current-summary"),
+    macroStats: document.getElementById("macro-stats"),
+    recentEvents: document.getElementById("recent-events"),
+    presidentList: document.getElementById("president-list"),
+    governmentList: document.getElementById("government-list"),
+    economyList: document.getElementById("economy-list"),
+    potusElectionList: document.getElementById("potus-election-list"),
+    congressElectionList: document.getElementById("congress-election-list"),
+    timelineList: document.getElementById("timeline-list"),
+    lawList: document.getElementById("law-list")
+  };
 
-  <link rel="stylesheet" href="./archive.css?v=5" />
-</head>
+  document.addEventListener("DOMContentLoaded", init);
 
-<body>
-  <header class="archive-header">
-    <div>
-      <p class="kicker">APRP ARCHIVES</p>
-      <h1>American Political Roleplay Archive</h1>
-      <p class="subline">Government, elections, economy, presidents, events, laws, and timeline records.</p>
-    </div>
+  async function init() {
+    try {
+      const [
+        presidentsRes,
+        economyRes,
+        eventsRes,
+        lawsRes,
+        regionsRes,
+        governorsRes,
+        senateRes,
+        houseRes,
+        potusRes,
+        congressRes
+      ] = await Promise.all([
+        supabase.from("president_entries").select("*").order("display_order", { ascending: true }),
+        supabase.from("economy_snapshots").select("*").order("year", { ascending: false }).order("month", { ascending: false }),
+        supabase.from("timeline_events").select("*").order("year", { ascending: false }).order("month", { ascending: false }).order("day", { ascending: false }).limit(20),
+        supabase.from("laws").select("*").order("year", { ascending: false }).limit(20),
+        supabase.from("gov_regions").select("*").order("sort_order", { ascending: true }),
+        supabase.from("gov_governors").select("*"),
+        supabase.from("gov_senate_seats").select("*"),
+        supabase.from("gov_house_seats").select("*"),
+        supabase.from("potus_election_archives").select("*").order("year", { ascending: false }),
+        supabase.from("congress_election_archives").select("*").order("year", { ascending: false })
+      ]);
 
-    <nav class="top-links">
-      <a href="./">Live Results</a>
-      <a href="./archive.html">Archive</a>
-      <a href="./government.html">Government</a>
-      <a href="./economy.html">Economy</a>
-    </nav>
-  </header>
+      [
+        presidentsRes, economyRes, eventsRes, lawsRes, regionsRes,
+        governorsRes, senateRes, houseRes, potusRes, congressRes
+      ].forEach(throwIf);
 
-  <main class="archive-shell">
-    <section id="error-box" class="error-box hidden"></section>
+      const presidents = presidentsRes.data || [];
+      const economy = economyRes.data || [];
+      const events = eventsRes.data || [];
+      const laws = lawsRes.data || [];
+      const regions = regionsRes.data || [];
+      const governors = governorsRes.data || [];
+      const senate = senateRes.data || [];
+      const house = houseRes.data || [];
+      const potus = potusRes.data || [];
+      const congress = congressRes.data || [];
 
-    <section class="hero-grid">
-      <section class="hero-card">
-        <p class="kicker">CURRENT CANON</p>
-        <h2 id="current-title">Loading APRP world state...</h2>
-        <p id="current-summary">Pulling the latest president, macro stats, government, elections, and timeline entries.</p>
+      renderHero(presidents, economy, events);
+      renderPresidents(presidents);
+      renderEconomy(economy);
+      renderEvents(events);
+      renderLaws(laws);
+      renderGovernment(regions, governors, senate, house);
+      renderPotusElections(potus);
+      renderCongressElections(congress);
+    } catch (err) {
+      showError("Could not load archive data. " + (err.message || err));
+    }
+  }
 
-        <div class="quick-buttons">
-          <a href="#presidents">Hall of Presidents</a>
-          <a href="#government">Government</a>
-          <a href="#economy">Economy</a>
-          <a href="#potus-elections">POTUS Elections</a>
-          <a href="#congress-elections">Congress Elections</a>
-          <a href="#timeline">Timeline</a>
-          <a href="#laws">Laws</a>
-        </div>
-      </section>
+  function renderHero(presidents, economy, events) {
+    const currentPresident =
+      presidents.find(p => p.status === "current") ||
+      presidents[presidents.length - 1] ||
+      presidents[0];
 
-      <aside class="info-panel">
-        <h3>Key Macro Stats</h3>
-        <div id="macro-stats" class="stat-grid"></div>
+    const currentEconomy =
+      economy.find(e => e.is_current) ||
+      economy[0];
 
-        <h3>Current / Recent Events</h3>
-        <div id="recent-events" class="mini-list"></div>
-      </aside>
-    </section>
+    els.currentTitle.textContent = currentPresident
+      ? `${currentPresident.full_name} Administration`
+      : "APRP Current Archive";
 
-    <section id="presidents" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">HALL</p>
-          <h2>Hall of Presidents</h2>
-        </div>
+    els.currentSummary.textContent =
+      currentPresident?.short_summary ||
+      "Current APRP canon, government, economy, events, elections, and historical records.";
+
+    els.macroStats.innerHTML = currentEconomy
+      ? `
+        ${stat("GDP", money(currentEconomy.gdp))}
+        ${stat("Growth", pct(currentEconomy.gdp_growth))}
+        ${stat("Unemployment", pct(currentEconomy.unemployment))}
+        ${stat("Inflation", pct(currentEconomy.inflation))}
+        ${stat("Debt", money(currentEconomy.debt))}
+        ${stat("Deficit", money(currentEconomy.deficit))}
+      `
+      : `<p class="muted">No economy snapshot yet.</p>`;
+
+    els.recentEvents.innerHTML = events.slice(0, 5).map(e => `
+      <div class="mini-item">
+        <strong>${esc(e.title)}</strong>
+        <span>${esc(e.date_label || e.year || "")} • ${esc(e.category || "general")}</span>
       </div>
-      <div id="president-list" class="president-grid"></div>
-    </section>
+    `).join("") || `<p class="muted">No recent events yet.</p>`;
+  }
 
-    <section id="government" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">CURRENT GOVERNMENT</p>
-          <h2>Regions, Governors, Senate, and House</h2>
+  function renderPresidents(rows) {
+    els.presidentList.innerHTML = rows.map(p => `
+      <article class="record-card">
+        ${p.portrait_url ? `<img class="portrait" src="${escAttr(p.portrait_url)}" alt="">` : ""}
+        <h3>${esc(p.full_name)}</h3>
+        <div class="record-meta">
+          <span class="pill">#${esc(p.number || "")}</span>
+          <span class="pill">${esc(p.party || "")}</span>
+          <span class="pill">${esc(p.term_start || "")}${p.term_end ? "–" + esc(p.term_end) : ""}</span>
         </div>
-      </div>
-      <div id="government-list" class="region-grid"></div>
-    </section>
+        <p>${esc(p.short_summary || p.full_summary || "No summary yet.")}</p>
+      </article>
+    `).join("") || `<p class="muted">No presidents added yet.</p>`;
+  }
 
-    <section id="economy" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">ECONOMY</p>
-          <h2>Economy Snapshots & Charts</h2>
+  function renderGovernment(regions, governors, senate, house) {
+    els.governmentList.innerHTML = regions.map(r => {
+      const gov = governors.find(g => g.region_id === r.id);
+      const sens = senate.filter(s => s.region_id === r.id);
+      const reps = house.filter(h => h.region_id === r.id);
+
+      return `
+        <article class="record-card">
+          <h3>${esc(r.name)} ${r.cycle_type ? "|" : ""} ${esc(r.cycle_type || "")}</h3>
+          <div class="record-meta">
+            <span class="pill">${esc(sens.length)} Senators</span>
+            <span class="pill">${esc(reps.length)} House Seats</span>
+          </div>
+          <p><strong>Governor:</strong> ${esc(gov?.governor_name || "Vacant")} ${gov?.governor_party ? "— " + esc(gov.governor_party) : ""}</p>
+          <p><strong>Senate:</strong> ${sens.map(s => `${s.seat_class || s.custom_class || "Seat"}: ${s.filler_name || "Vacant"}`).join("; ") || "No seats"}</p>
+        </article>
+      `;
+    }).join("") || `<p class="muted">No government regions yet.</p>`;
+  }
+
+  function renderEconomy(rows) {
+    els.economyList.innerHTML = rows.slice(0, 20).map(e => `
+      <article class="record-card wide-card">
+        <h3>${esc(e.label || `${e.year}${e.month ? "-" + e.month : ""}`)}</h3>
+        <div class="record-meta">
+          <span class="pill">${esc(e.period_type)}</span>
+          ${e.is_current ? `<span class="pill">Current</span>` : ""}
+          <span class="pill">GDP ${money(e.gdp)}</span>
+          <span class="pill">Growth ${pct(e.gdp_growth)}</span>
         </div>
-      </div>
-      <div id="economy-list" class="snapshot-grid"></div>
-    </section>
+        <p>${esc(e.summary || "No summary yet.")}</p>
+        ${renderCharts(e.chart_json)}
+      </article>
+    `).join("") || `<p class="muted">No economy snapshots yet.</p>`;
+  }
 
-    <section id="potus-elections" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">ELECTION ARCHIVE</p>
-          <h2>Presidential Election Archives</h2>
+  function renderPotusElections(rows) {
+    els.potusElectionList.innerHTML = rows.map(e => `
+      <article class="record-card election-card">
+        <h3>${esc(e.year)} — ${esc(e.title)}</h3>
+
+        <div class="ev-line">
+          <div>
+            <strong>${esc(e.winner_ev || 0)}</strong>
+            <span>${esc(e.winner_name || "Winner")}</span>
+          </div>
+
+          <div class="ev-bar">
+            <div style="width:${evPct(e.winner_ev, e.runner_up_ev)}%"></div>
+          </div>
+
+          <div>
+            <strong>${esc(e.runner_up_ev || 0)}</strong>
+            <span>${esc(e.runner_up_name || "Runner-up")}</span>
+          </div>
         </div>
-      </div>
-      <div id="potus-election-list" class="election-grid"></div>
-    </section>
 
-    <section id="congress-elections" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">ELECTION ARCHIVE</p>
-          <h2>Congressional Election Archives</h2>
+        ${e.map_url ? `<img class="election-map-img" src="${escAttr(e.map_url)}" alt="">` : ""}
+
+        <p>${esc(e.summary || "")}</p>
+
+        ${renderStateTable(e.state_results_json)}
+      </article>
+    `).join("") || `<p class="muted">No presidential election archives yet.</p>`;
+  }
+
+  function renderCongressElections(rows) {
+    els.congressElectionList.innerHTML = rows.map(e => `
+      <article class="record-card election-card">
+        <h3>${esc(e.year)} — ${esc(e.title)}</h3>
+
+        <div class="record-meta">
+          <span class="pill">${esc(e.election_type || "")}</span>
+          <span class="pill">House: ${esc(e.house_control || "—")}</span>
+          <span class="pill">Senate: ${esc(e.senate_control || "—")}</span>
+          <span class="pill">Governors: ${esc(e.governor_control || "—")}</span>
         </div>
-      </div>
-      <div id="congress-election-list" class="election-grid"></div>
-    </section>
 
-    <section id="timeline" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">TIMELINE</p>
-          <h2>Major Timeline Events</h2>
-        </div>
-      </div>
-      <div id="timeline-list" class="timeline-list"></div>
-    </section>
+        ${e.map_url ? `<img class="election-map-img" src="${escAttr(e.map_url)}" alt="">` : ""}
 
-    <section id="laws" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">LAW ARCHIVE</p>
-          <h2>Signed Laws and Major Acts</h2>
-        </div>
-      </div>
-      <div id="law-list" class="mini-list"></div>
-    </section>
-  </main>
+        <p>${esc(e.summary || "")}</p>
 
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=5"></script>
-  <script src="./archive.js?v=5"></script>
-</body>
-</html>
+        ${renderCharts(e.control_json)}
+      </article>
+    `).join("") || `<p class="muted">No congressional election archives yet.</p>`;
+  }
+
+  function renderEvents(rows) {
+    els.timelineList.innerHTML = rows.map(e => `
+      <div class="timeline-item">
+        <strong>${esc(e.title)}</strong>
+        <span>${esc(e.date_label || e.year || "")} • ${esc(e.category || "")}</span>
+        <p>${esc(e.summary || "")}</p>
+      </div>
+    `).join("") || `<p class="muted">No timeline events yet.</p>`;
+  }
+
+  function renderLaws(rows) {
+    els.lawList.innerHTML = rows.map(l => `
+      <div class="mini-item">
+        <strong>${esc(l.title)}</strong>
+        <span>${esc(l.date_signed || l.year || "")} • ${esc(l.status || "")} • ${esc(l.funding || "")}</span>
+      </div>
+    `).join("") || `<p class="muted">No laws added yet.</p>`;
+  }
+
+  function renderCharts(chartJson) {
+    const charts = chartJson?.charts;
+    if (!Array.isArray(charts) || !charts.length) return "";
+
+    return `
+      <div class="chart-stack">
+        ${charts.map(chart => {
+          const points = Array.isArray(chart.points) ? chart.points : [];
+          const max = Math.max(...points.map(p => Number(p.value || 0)), 1);
+
+          return `
+            <div class="chart-card">
+              <h4>${esc(chart.title || "Chart")}</h4>
+              <div class="bar-chart">
+                ${points.map(p => {
+                  const value = Number(p.value || 0);
+                  const width = Math.max(2, (value / max) * 100);
+
+                  return `
+                    <div class="bar-row">
+                      <span>${esc(p.label)}</span>
+                      <div class="bar-track">
+                        <div class="bar-fill" style="width:${width}%"></div>
+                      </div>
+                      <strong>${esc(value)}${esc(chart.unit || "")}</strong>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  function renderStateTable(json) {
+    const states = json?.states;
+    if (!Array.isArray(states) || !states.length) return "";
+
+    return `
+      <div class="state-table-wrap">
+        <table class="state-table">
+          <thead>
+            <tr>
+              <th>State</th>
+              <th>EV</th>
+              <th>Winner</th>
+              <th>GOP</th>
+              <th>DNC</th>
+              <th>IND</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${states.map(s => `
+              <tr>
+                <td>${esc(s.state || "")}</td>
+                <td>${esc(s.ev || "")}</td>
+                <td>${esc(s.winner || "")}</td>
+                <td>${esc(s.gop ?? "")}</td>
+                <td>${esc(s.dem ?? "")}</td>
+                <td>${esc(s.ind ?? "")}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function evPct(a, b) {
+    const total = Number(a || 0) + Number(b || 0);
+    if (!total) return 50;
+    return Math.max(0, Math.min(100, (Number(a || 0) / total) * 100));
+  }
+
+  function stat(label, value) {
+    return `<div class="stat-box"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`;
+  }
+
+  function money(n) {
+    if (n === null || n === undefined || n === "") return "—";
+    return "$" + Number(n).toLocaleString() + "B";
+  }
+
+  function pct(n) {
+    if (n === null || n === undefined || n === "") return "—";
+    return Number(n).toFixed(1) + "%";
+  }
+
+  function throwIf(res) {
+    if (res.error) throw res.error;
+  }
+
+  function showError(msg) {
+    els.error.textContent = msg;
+    els.error.classList.remove("hidden");
+  }
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>'"]/g, m => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;"
+    }[m]));
+  }
+
+  function escAttr(s) {
+    return esc(s).replace(/`/g, "&#96;");
+  }
+})();
