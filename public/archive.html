@@ -3,26 +3,29 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>APRP Archives</title>
+  <title>APRP Archive Hub</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./archive.css?v=16" />
+  <link rel="stylesheet" href="./archive.css?v=30" />
 </head>
-
 <body>
-  <header class="archive-header">
-    <div>
-      <p class="kicker">APRP ARCHIVES</p>
-      <h1>American Political Roleplay Archive</h1>
-      <p class="subline">Government, elections, economy, presidents, events, laws, and timeline records.</p>
+  <div class="archive-bg"></div>
+
+  <header class="hub-header">
+    <div class="brand-wrap">
+      <p id="hub-kicker" class="eyebrow">APRP ARCHIVES</p>
+      <h1 id="hub-title">American Political Roleplay Archive</h1>
+      <p id="hub-summary" class="header-summary">
+        Government, elections, economy, presidents, events, laws, and timeline records.
+      </p>
     </div>
 
-    <nav class="top-links">
+    <nav class="top-nav">
       <a href="./index.html">Live Results</a>
-      <a href="./archive.html">Archive Hub</a>
+      <a href="./archive.html" class="active">Archive Hub</a>
       <a href="./hall-of-presidents.html">Hall of Presidents</a>
       <a href="./government.html">Government</a>
       <a href="./economy.html">Economy</a>
@@ -32,187 +35,200 @@
     </nav>
   </header>
 
-  <main class="archive-shell">
+  <main class="hub-shell">
     <section id="error-box" class="error-box hidden"></section>
 
-    <section class="hero-grid">
-      <section class="hero-card">
-        <p class="kicker">CURRENT CANON</p>
-        <h2 id="current-title">Loading APRP world state...</h2>
-        <p id="current-summary">Pulling the latest president, macro stats, government, elections, and timeline entries.</p>
+    <section class="top-grid">
+      <section class="hero-card glow-blue">
+        <div class="hero-head">
+          <div>
+            <p class="section-kicker">CURRENT CANON</p>
+            <h2 id="hero-title">APRP Archive</h2>
+            <p id="hero-description" class="hero-description">
+              Government, elections, economy, presidents, events, laws, and timeline records.
+            </p>
+          </div>
 
-        <div class="quick-buttons">
-          <a href="./hall-of-presidents.html">Hall of Presidents</a>
-          <a href="./government.html">Government</a>
-          <a href="./economy.html">Economy</a>
-          <a href="./elections.html">Election Archives</a>
-          <a href="./timeline.html">Timeline</a>
-          <a href="./laws.html">Laws</a>
-          <a href="./index.html">Live Results</a>
+          <div class="hero-badge-wrap">
+            <span id="cycle-label" class="cycle-pill">ACTIVE CYCLE</span>
+          </div>
+        </div>
+
+        <div class="quick-link-grid">
+          <a class="quick-link" href="./hall-of-presidents.html">
+            <span class="quick-link-label">Hall of Presidents</span>
+            <span class="quick-link-sub">Presidents, VPs, actions, scandals</span>
+          </a>
+
+          <a class="quick-link" href="./government.html">
+            <span class="quick-link-label">Government</span>
+            <span class="quick-link-sub">Regions, governors, Senate, House</span>
+          </a>
+
+          <a class="quick-link" href="./economy.html">
+            <span class="quick-link-label">Economy</span>
+            <span class="quick-link-sub">Macro stats, charts, trends</span>
+          </a>
+
+          <a class="quick-link" href="./elections.html">
+            <span class="quick-link-label">Election Archives</span>
+            <span class="quick-link-sub">POTUS maps and Congress control</span>
+          </a>
+
+          <a class="quick-link" href="./timeline.html">
+            <span class="quick-link-label">Timeline</span>
+            <span class="quick-link-sub">Major events and canon entries</span>
+          </a>
+
+          <a class="quick-link" href="./laws.html">
+            <span class="quick-link-label">Laws</span>
+            <span class="quick-link-sub">Signed acts, bills, citations</span>
+          </a>
         </div>
       </section>
 
-      <aside class="info-panel">
-        <h3>Key Macro Stats</h3>
-        <div id="macro-stats" class="stat-grid">
-          <p class="muted">Loading macro stats...</p>
-        </div>
+      <aside class="side-column">
+        <section class="side-card schedule-card glow-red">
+          <div class="card-head compact">
+            <div>
+              <p class="section-kicker">CYCLE SCHEDULE</p>
+              <h3>Upcoming Schedule</h3>
+            </div>
+          </div>
 
-        <h3>Current / Recent Events</h3>
-        <div id="recent-events" class="mini-list">
-          <p class="muted">Loading recent events...</p>
-        </div>
+          <div id="schedule-list" class="schedule-list">
+            <div class="empty-state small">No schedule added yet.</div>
+          </div>
+        </section>
+
+        <section class="side-card glow-purple">
+          <div class="card-head compact">
+            <div>
+              <p class="section-kicker">KEY MACRO STATS</p>
+              <h3>Economy Snapshot</h3>
+            </div>
+          </div>
+
+          <div id="macro-stats" class="macro-grid">
+            <div class="macro-stat">
+              <span>GDP</span>
+              <strong>—</strong>
+            </div>
+            <div class="macro-stat">
+              <span>Growth</span>
+              <strong>—</strong>
+            </div>
+            <div class="macro-stat">
+              <span>Unemployment</span>
+              <strong>—</strong>
+            </div>
+            <div class="macro-stat">
+              <span>Inflation</span>
+              <strong>—</strong>
+            </div>
+            <div class="macro-stat">
+              <span>Debt</span>
+              <strong>—</strong>
+            </div>
+            <div class="macro-stat">
+              <span>Deficit</span>
+              <strong>—</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="side-card glow-green">
+          <div class="card-head compact">
+            <div>
+              <p class="section-kicker">RECENT</p>
+              <h3>Current / Recent Events</h3>
+            </div>
+          </div>
+
+          <div id="recent-events" class="recent-events-list">
+            <div class="empty-state small">No recent events yet.</div>
+          </div>
+        </section>
       </aside>
     </section>
 
     <section class="section-card">
-      <div class="section-head">
+      <div class="card-head">
         <div>
-          <p class="kicker">ARCHIVE SECTIONS</p>
+          <p class="section-kicker">ARCHIVE SECTIONS</p>
           <h2>Browse APRP Records</h2>
+          <p class="subtext">
+            Navigate directly into the main archive areas.
+          </p>
         </div>
       </div>
 
       <div class="section-grid">
-        <a class="feature-card" href="./hall-of-presidents.html">
-          <span>01</span>
+        <a href="./hall-of-presidents.html" class="archive-tile accent-blue">
+          <span class="tile-number">01</span>
           <h3>Hall of Presidents</h3>
-          <p>Terms, portraits, parties, vice presidents, first ladies, accomplishments, scandals, actions, events, and administration summaries.</p>
+          <p>Terms, portraits, vice presidents, accomplishments, scandals, events, and administration summaries.</p>
         </a>
 
-        <a class="feature-card" href="./government.html">
-          <span>02</span>
+        <a href="./government.html" class="archive-tile accent-cyan">
+          <span class="tile-number">02</span>
           <h3>Current Government</h3>
           <p>Regions, governors, senators, House seats, parties, vacancies, classes, and current office holders.</p>
         </a>
 
-        <a class="feature-card" href="./economy.html">
-          <span>03</span>
+        <a href="./economy.html" class="archive-tile accent-green">
+          <span class="tile-number">03</span>
           <h3>Economy</h3>
-          <p>Current, monthly, and yearly economic snapshots with custom JSON charts and macro indicators.</p>
+          <p>Current, monthly, and yearly economic snapshots with long-term line charts and macro indicators.</p>
         </a>
 
-        <a class="feature-card" href="./elections.html">
-          <span>04</span>
+        <a href="./elections.html" class="archive-tile accent-red">
+          <span class="tile-number">04</span>
           <h3>Election Archives</h3>
           <p>Presidential maps, state-by-state results, congressional control charts, and archived race summaries.</p>
         </a>
 
-        <a class="feature-card" href="./timeline.html">
-          <span>05</span>
+        <a href="./timeline.html" class="archive-tile accent-purple">
+          <span class="tile-number">05</span>
           <h3>Timeline</h3>
           <p>Major events, crises, lore developments, administration actions, and historical canon entries.</p>
         </a>
 
-        <a class="feature-card" href="./laws.html">
-          <span>06</span>
+        <a href="./laws.html" class="archive-tile accent-gold">
+          <span class="tile-number">06</span>
           <h3>Laws</h3>
           <p>Signed bills, vetoes, citations, authors, funding, subjects, summaries, and bill links.</p>
         </a>
       </div>
     </section>
 
-    <section id="presidents" class="section-card">
-      <div class="section-head">
+    <section class="section-card">
+      <div class="card-head">
         <div>
-          <p class="kicker">HALL</p>
-          <h2>Hall of Presidents</h2>
+          <p class="section-kicker">LIVE PREVIEW</p>
+          <h2>What’s In The Archive Right Now</h2>
+          <p class="subtext">Pulled from the backend archive tables.</p>
         </div>
-        <a class="section-link" href="./hall-of-presidents.html">Open Hall</a>
       </div>
 
-      <div id="president-list" class="president-grid">
-        <p class="muted">Loading presidents...</p>
-      </div>
-    </section>
+      <div class="preview-grid">
+        <article id="featured-president" class="preview-card glow-blue">
+          <div class="empty-state">No president records yet.</div>
+        </article>
 
-    <section id="government" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">PREVIEW</p>
-          <h2>Current Government</h2>
-        </div>
-        <a class="section-link" href="./government.html">Open Government</a>
-      </div>
+        <article id="featured-economy" class="preview-card glow-green">
+          <div class="empty-state">No economy snapshots yet.</div>
+        </article>
 
-      <div id="government-list" class="region-grid">
-        <p class="muted">Loading government...</p>
-      </div>
-    </section>
-
-    <section id="economy" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">PREVIEW</p>
-          <h2>Economy Snapshots & Charts</h2>
-        </div>
-        <a class="section-link" href="./economy.html">Open Economy</a>
-      </div>
-
-      <div id="economy-list" class="snapshot-grid">
-        <p class="muted">Loading economy...</p>
-      </div>
-    </section>
-
-    <section id="potus-elections" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">PREVIEW</p>
-          <h2>Presidential Election Archives</h2>
-        </div>
-        <a class="section-link" href="./elections.html">Open Elections</a>
-      </div>
-
-      <div id="potus-election-list" class="election-grid">
-        <p class="muted">Loading presidential elections...</p>
-      </div>
-    </section>
-
-    <section id="congress-elections" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">PREVIEW</p>
-          <h2>Congressional Election Archives</h2>
-        </div>
-        <a class="section-link" href="./elections.html">Open Elections</a>
-      </div>
-
-      <div id="congress-election-list" class="election-grid">
-        <p class="muted">Loading congressional elections...</p>
-      </div>
-    </section>
-
-    <section id="timeline" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">PREVIEW</p>
-          <h2>Major Timeline Events</h2>
-        </div>
-        <a class="section-link" href="./timeline.html">Open Timeline</a>
-      </div>
-
-      <div id="timeline-list" class="timeline-list">
-        <p class="muted">Loading timeline...</p>
-      </div>
-    </section>
-
-    <section id="laws" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">PREVIEW</p>
-          <h2>Signed Laws and Major Acts</h2>
-        </div>
-        <a class="section-link" href="./laws.html">Open Laws</a>
-      </div>
-
-      <div id="law-list" class="mini-list">
-        <p class="muted">Loading laws...</p>
+        <article id="featured-timeline" class="preview-card glow-red">
+          <div class="empty-state">No timeline events yet.</div>
+        </article>
       </div>
     </section>
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=16"></script>
-  <script src="./archive.js?v=16"></script>
+  <script src="../shared/config.js?v=30"></script>
+  <script src="./archive.js?v=30"></script>
 </body>
 </html>
