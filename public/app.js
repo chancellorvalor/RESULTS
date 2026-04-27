@@ -383,8 +383,9 @@
     if (v === "dnc" || v === "democrat" || v === "democratic") return "dem";
     if (v === "republican" || v === "rep") return "gop";
     if (v === "independent" || v === "other") return "ind";
+    if (!v || v === "null" || v === "undefined") return "";
 
-    return v || "ind";
+    return v;
   }
 
   function defaultCandidateColor(id) {
@@ -421,9 +422,6 @@
     const marginPct = totalVotes ? (voteLead / totalVotes) * 100 : 0;
 
     const manualCall = normalizePartyId(r.called_party || "");
-    const calledParty = manualCall && manualCall !== "independent"
-      ? manualCall
-      : "";
 
     return {
       ...r,
@@ -435,7 +433,7 @@
       leader_votes: leaderVotes,
       second_votes: secondVotes,
       vote_lead: voteLead,
-      called_party: calledParty,
+      called_party: manualCall || "",
       margin_pct: marginPct,
       total_votes: totalVotes,
       status: totalVotes ? statusFromMargin(marginPct) : "Unreported",
@@ -843,9 +841,9 @@
       `;
     }
 
-    const gop = findCandidate("gop") || { name: "GOP", party: "GOP", color: "#e74c3c" };
-    const dem = findCandidate("dem") || { name: "DNC", party: "DNC", color: "#3498db" };
-    const ind = findCandidate("ind") || { name: "Independent", party: "IND", color: "#9b59b6" };
+    const gop = findCandidate("gop") || { id: "gop", name: "GOP", party: "GOP", color: "#e74c3c" };
+    const dem = findCandidate("dem") || { id: "dem", name: "DNC", party: "DNC", color: "#3498db" };
+    const ind = findCandidate("ind") || { id: "ind", name: "Independent", party: "IND", color: "#9b59b6" };
 
     return `
       <div class="map-popup rich-popup">
@@ -1191,4 +1189,7 @@
   }
 
   window.__openStateResult = openStateModal;
+  window.__setMapMode = setMapMode;
+
+  console.log("APRP app.js loaded. Map mode buttons active.");
 })();
