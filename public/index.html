@@ -3,112 +3,274 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>APRP Archives</title>
+  <title>APRP Live Results</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./archive.css?v=1" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css?v=7" />
 </head>
 
 <body>
-  <header class="archive-header">
-    <div>
-      <p class="kicker">APRP ARCHIVES</p>
-      <h1>American Political Roleplay Archive</h1>
-      <p class="subline">Government, elections, economy, presidents, events, laws, and timeline records.</p>
-    </div>
+  <div id="loader" class="loader">Loading live results...</div>
 
-    <nav class="top-links">
-      <a href="./">Live Results</a>
-      <a href="./archive.html">Archive</a>
-      <a href="./government.html">Government</a>
-      <a href="./economy.html">Economy</a>
-    </nav>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand-block">
+        <div class="eyebrow">APRP LIVE RESULTS</div>
+        <h1 id="election-title">Election Results</h1>
+        <div class="header-meta">
+          <span id="election-year" class="year-pill"></span>
+          <span id="election-subtitle">Live map</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <a class="secondary-btn link-btn" href="./archive.html">ARCHIVE</a>
+        <button id="path-to-victory" class="secondary-btn">PATH TO VICTORY</button>
+      </div>
+    </div>
   </header>
 
-  <main class="archive-shell">
+  <main class="page-shell">
     <section id="error-box" class="error-box hidden"></section>
 
-    <section class="hero-grid">
-      <section class="hero-card">
-        <p class="kicker">CURRENT CANON</p>
-        <h2 id="current-title">Loading APRP world state...</h2>
-        <p id="current-summary">Pulling the latest president, macro stats, government, and timeline entries.</p>
+    <section id="winner-card" class="winner-banner hidden">
+      PROJECTED WINNER: <span id="winner-name"></span>
+    </section>
 
-        <div class="quick-buttons">
-          <a href="./archive.html#presidents">Hall of Presidents</a>
-          <a href="./archive.html#government">Government</a>
-          <a href="./archive.html#economy">Economy</a>
-          <a href="./archive.html#timeline">Timeline</a>
-          <a href="./archive.html#laws">Laws</a>
-          <a href="./archive.html#elections">Elections</a>
+    <section class="scoreboard-card">
+      <div class="candidate-side left" id="candidate-left">
+        <div class="candidate-photo-wrap">
+          <img id="left-photo" class="candidate-photo" src="" alt="">
+        </div>
+        <div class="candidate-meta">
+          <div id="left-party" class="candidate-party">DNC</div>
+          <div id="left-name" class="candidate-name">Candidate</div>
+          <div id="left-ev" class="candidate-ev">0 EV</div>
+          <div id="left-votes" class="candidate-votes">0 votes</div>
+        </div>
+      </div>
+
+      <div class="scoreboard-center">
+        <div class="scoreboard-topline">
+          <span id="left-short">DNC</span>
+          <strong>ELECTORAL VOTE TRACKER</strong>
+          <span id="right-short">GOP</span>
+        </div>
+
+        <div class="ev-meter">
+          <div id="ev-fill-left" class="ev-fill left-fill"></div>
+          <div id="ev-fill-right" class="ev-fill right-fill"></div>
+          <div id="ev-threshold" class="ev-threshold"></div>
+          <div id="ev-left-label" class="ev-label left-label">0</div>
+          <div id="ev-right-label" class="ev-label right-label">0</div>
+        </div>
+
+        <div class="meter-meta">
+          <span>0</span>
+          <span id="to-win-label">270 TO WIN</span>
+          <span id="total-ev-label">538</span>
+        </div>
+
+        <div class="national-popular">
+          <div class="popular-row">
+            <span id="popular-left-label">DNC</span>
+            <div class="popular-bar">
+              <div id="popular-fill-left" class="popular-fill left-fill"></div>
+              <div id="popular-fill-right" class="popular-fill right-fill"></div>
+            </div>
+            <span id="popular-right-label">GOP</span>
+          </div>
+          <div class="popular-summary">
+            <span id="national-reporting">Reporting: 0.0%</span>
+            <span id="last-updated">Updated --</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="candidate-side right" id="candidate-right">
+        <div class="candidate-photo-wrap">
+          <img id="right-photo" class="candidate-photo" src="" alt="">
+        </div>
+        <div class="candidate-meta">
+          <div id="right-party" class="candidate-party">GOP</div>
+          <div id="right-name" class="candidate-name">Candidate</div>
+          <div id="right-ev" class="candidate-ev">0 EV</div>
+          <div id="right-votes" class="candidate-votes">0 votes</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <section class="map-card">
+        <div class="card-head">
+          <div>
+            <h2>Live Electoral Map</h2>
+            <p>Click a state for detailed results and projection status.</p>
+          </div>
+
+          <div class="map-actions">
+            <button id="map-mode-called" class="secondary-btn">Called races</button>
+            <button id="map-mode-lead" class="secondary-btn">Strength of lead</button>
+            <button id="map-mode-turnout" class="secondary-btn">Vote count status</button>
+            <button id="reset-map" class="secondary-btn">Reset map</button>
+            <button id="toggle-legend" class="secondary-btn">Legend</button>
+          </div>
+        </div>
+
+        <div id="map" class="map"></div>
+
+        <div class="map-foot">
+          <div id="legend" class="legend"></div>
         </div>
       </section>
 
-      <aside class="info-panel">
-        <h3>Key Macro Stats</h3>
-        <div id="macro-stats" class="stat-grid"></div>
+      <aside class="sidebar-card">
+        <div class="card-head">
+          <div>
+            <h2>Key Races</h2>
+            <p>Closest states currently on the board.</p>
+          </div>
+        </div>
 
-        <h3>Current / Recent Events</h3>
-        <div id="recent-events" class="mini-list"></div>
+        <div class="ticker-wrap">
+          <div id="closest-races" class="ticker"></div>
+        </div>
+
+        <div class="status-guide">
+          <h3>Projection Guide</h3>
+          <ul>
+            <li><strong>TCTC</strong> — margin under 1%</li>
+            <li><strong>Tilt</strong> — margin 1% to under 3%</li>
+            <li><strong>Lean</strong> — margin 3% to under 7%</li>
+            <li><strong>Likely</strong> — margin 7% to under 12%</li>
+            <li><strong>Safe</strong> — margin 12%+</li>
+          </ul>
+        </div>
       </aside>
     </section>
 
-    <section id="presidents" class="section-card">
-      <div class="section-head">
+    <section class="table-card">
+      <div class="card-head">
         <div>
-          <p class="kicker">HALL</p>
-          <h2>Hall of Presidents</h2>
+          <h2>State Results</h2>
+          <p>Votes are calculated from admin-entered turnout and percentages.</p>
         </div>
+        <input id="state-search" class="state-search" placeholder="Search state..." />
       </div>
-      <div id="president-list" class="president-grid"></div>
-    </section>
 
-    <section id="government" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">CURRENT GOVERNMENT</p>
-          <h2>Regions, Governors, Senate, and House</h2>
-        </div>
+      <div class="table-wrap">
+        <table>
+          <thead id="state-table-head"></thead>
+          <tbody id="state-table-body"></tbody>
+        </table>
       </div>
-      <div id="government-list" class="region-grid"></div>
-    </section>
-
-    <section id="economy" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">ECONOMY</p>
-          <h2>Economy Snapshots</h2>
-        </div>
-      </div>
-      <div id="economy-list" class="snapshot-grid"></div>
-    </section>
-
-    <section id="timeline" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">TIMELINE</p>
-          <h2>Major Timeline Events</h2>
-        </div>
-      </div>
-      <div id="timeline-list" class="timeline-list"></div>
-    </section>
-
-    <section id="laws" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">LAW ARCHIVE</p>
-          <h2>Signed Laws and Major Acts</h2>
-        </div>
-      </div>
-      <div id="law-list" class="mini-list"></div>
     </section>
   </main>
 
+  <div id="state-modal" class="modal hidden">
+    <div class="modal-backdrop" id="modal-close-backdrop"></div>
+
+    <div class="modal-card">
+      <button id="modal-close" class="modal-close">×</button>
+
+      <div class="modal-top">
+        <div>
+          <div id="modal-state-kicker" class="modal-kicker">STATE RESULT</div>
+          <h2 id="modal-state-title">State</h2>
+          <p id="modal-state-meta">0 EV • 0% reporting</p>
+        </div>
+        <div id="modal-status-pill" class="status-pill">TCTC</div>
+      </div>
+
+      <div class="modal-grid">
+        <div class="modal-candidate left">
+          <img id="modal-left-photo" class="modal-photo" src="" alt="">
+          <div class="modal-candidate-info">
+            <div id="modal-left-name" class="modal-name">Candidate</div>
+            <div id="modal-left-party" class="modal-party">DNC</div>
+            <div id="modal-left-pct" class="modal-pct">0.0%</div>
+            <div id="modal-left-votes" class="modal-votes">0 votes</div>
+          </div>
+        </div>
+
+        <div class="modal-candidate right">
+          <img id="modal-right-photo" class="modal-photo" src="" alt="">
+          <div class="modal-candidate-info">
+            <div id="modal-right-name" class="modal-name">Candidate</div>
+            <div id="modal-right-party" class="modal-party">GOP</div>
+            <div id="modal-right-pct" class="modal-pct">0.0%</div>
+            <div id="modal-right-votes" class="modal-votes">0 votes</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-bar-block">
+        <div class="modal-bar">
+          <div id="modal-bar-left" class="modal-bar-fill left-fill"></div>
+          <div id="modal-bar-right" class="modal-bar-fill right-fill"></div>
+        </div>
+      </div>
+
+      <div class="modal-stats">
+        <div class="stat-box">
+          <span class="stat-label">Counted Votes</span>
+          <strong id="modal-counted-votes">0</strong>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Vote Leader</span>
+          <strong id="modal-leader-name">—</strong>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Lead Margin</span>
+          <strong id="modal-lead-margin">0.00%</strong>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Projection</span>
+          <strong id="modal-status-text">TCTC</strong>
+        </div>
+      </div>
+
+      <div id="modal-third-candidate" class="third-candidate hidden"></div>
+    </div>
+  </div>
+
+  <div id="path-modal" class="modal hidden">
+    <div class="modal-backdrop" id="path-close-backdrop"></div>
+
+    <div class="modal-card large">
+      <button id="path-close" class="modal-close">×</button>
+
+      <div class="modal-top">
+        <div>
+          <div class="modal-kicker">INTERACTIVE</div>
+          <h2>Path to Victory</h2>
+          <p>Click states to add or remove them from each party’s path.</p>
+        </div>
+      </div>
+
+      <div class="path-layout">
+        <div class="path-side left">
+          <h3 id="path-left-name">DNC</h3>
+          <div id="path-left-ev" class="path-ev">0 EV</div>
+        </div>
+
+        <div id="path-map" class="path-map"></div>
+
+        <div class="path-side right">
+          <h3 id="path-right-name">GOP</h3>
+          <div id="path-right-ev" class="path-ev">0 EV</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=1"></script>
-  <script src="./archive.js?v=1"></script>
+  <script src="../shared/config.js?v=7"></script>
+  <script src="./app.js?v=7"></script>
 </body>
 </html>
