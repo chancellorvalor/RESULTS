@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./styles.css?v=16" />
+  <link rel="stylesheet" href="./styles.css?v=17" />
 </head>
 
 <body>
@@ -26,7 +26,7 @@
     </div>
   </div>
 
-  <main class="admin-shell">
+  <main class="admin-shell" style="display:none;">
     <header class="topbar">
       <div>
         <p class="kicker">APRP ARCHIVE ADMIN</p>
@@ -37,7 +37,7 @@
       <div class="actions admin-link-row">
         <a class="admin-link-btn active" href="./index.html">Main Archive Control</a>
         <a class="admin-link-btn" href="./halls.html">President Hall Control</a>
-        <a class="admin-link-btn" href="../fec-control-v1/index.html">Government / FEC Control</a>
+        <a class="admin-link-btn" href="../fec-roster-m4k81/index.html">Government / FEC Control</a>
         <a class="admin-link-btn" href="../public/archive.html" target="_blank" rel="noopener">Public Archive</a>
         <button id="refresh-data" type="button">Refresh Data</button>
       </div>
@@ -61,6 +61,7 @@
           <div>
             <p class="kicker">HALL OF PRESIDENTS</p>
             <h2>Add / Update President</h2>
+            <p class="muted">Basic older president input. For the full advanced Hall editor, use President Hall Control.</p>
           </div>
           <button id="save-president" type="button">Save President</button>
         </div>
@@ -107,7 +108,7 @@
           <div>
             <p class="kicker">ECONOMY</p>
             <h2>Add / Update Economy Snapshot</h2>
-            <p class="muted">Top fields control the current snapshot. The yearly table generates long-term line charts.</p>
+            <p class="muted">Top fields control the current snapshot. The yearly table generates long-term public line charts.</p>
           </div>
           <button id="save-economy" type="button">Save Economy Snapshot</button>
         </div>
@@ -449,7 +450,53 @@
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=16"></script>
-  <script src="./app.js?v=16"></script>
+  <script src="../shared/config.js?v=17"></script>
+  <script src="./app.js?v=17"></script>
+
+  <script>
+    // Backup login wiring in case app.js fails before binding the button.
+    window.addEventListener("DOMContentLoaded", () => {
+      const ACCESS_CODE = "39333349";
+
+      const gate = document.getElementById("login-gate");
+      const input = document.getElementById("login-code");
+      const button = document.getElementById("login-submit");
+      const error = document.getElementById("login-error");
+      const shell = document.querySelector(".admin-shell");
+
+      function unlockArchiveControl() {
+        const typed = (input?.value || "").trim();
+
+        if (typed !== ACCESS_CODE) {
+          if (error) {
+            error.textContent = "Wrong code.";
+            error.classList.remove("hidden");
+          }
+          return;
+        }
+
+        if (error) error.classList.add("hidden");
+        if (gate) gate.style.display = "none";
+        if (shell) shell.style.display = "flex";
+
+        document.body.classList.add("archive-unlocked");
+        console.log("Archive control unlocked by backup handler.");
+      }
+
+      if (button) {
+        button.onclick = unlockArchiveControl;
+      }
+
+      if (input) {
+        input.addEventListener("keydown", event => {
+          if (event.key === "Enter") {
+            unlockArchiveControl();
+          }
+        });
+      }
+
+      console.log("Backup archive login handler loaded.");
+    });
+  </script>
 </body>
 </html>
