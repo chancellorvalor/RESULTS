@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./styles.css?v=18" />
+  <link rel="stylesheet" href="./styles.css?v=20" />
 </head>
 
 <body>
@@ -31,7 +31,7 @@
       <div>
         <p class="kicker">APRP ARCHIVE ADMIN</p>
         <h1>Archive Control Center</h1>
-        <p>Edit presidents, economy snapshots, events, laws, POTUS elections, and Congress election archives.</p>
+        <p>Edit economy snapshots, timeline events, laws, POTUS elections, and Congress election archives.</p>
       </div>
 
       <div class="actions admin-link-row">
@@ -39,70 +39,38 @@
         <a class="admin-link-btn" href="./halls.html">President Hall Control</a>
         <a class="admin-link-btn" href="../fec-roster-m4k81/index.html">Government / FEC Control</a>
         <a class="admin-link-btn" href="../public/archive.html" target="_blank" rel="noopener">Public Archive</a>
+        <a class="admin-link-btn" href="../public/hall-of-presidents.html" target="_blank" rel="noopener">Public Hall</a>
         <button id="refresh-data" type="button">Refresh Data</button>
       </div>
     </header>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <p class="kicker">SEPARATE CONTROLS</p>
+          <h2>President Hall Editing Moved</h2>
+          <p class="muted">
+            Hall of Presidents editing is now handled only in the advanced President Hall Control page.
+            Use this main archive page for economy, timeline, laws, and election archives.
+          </p>
+        </div>
+
+        <a class="admin-link-btn" href="./halls.html">Open President Hall Control</a>
+      </div>
+    </section>
 
     <section id="error-box" class="error-box hidden"></section>
     <section id="success-box" class="success-box hidden"></section>
 
     <nav class="tabs">
-      <button class="tab-btn active" type="button" data-tab="presidents">Presidents</button>
-      <button class="tab-btn" type="button" data-tab="economy">Economy</button>
+      <button class="tab-btn active" type="button" data-tab="economy">Economy</button>
       <button class="tab-btn" type="button" data-tab="events">Timeline Events</button>
       <button class="tab-btn" type="button" data-tab="laws">Laws</button>
       <button class="tab-btn" type="button" data-tab="potus">POTUS Elections</button>
       <button class="tab-btn" type="button" data-tab="congress">Congress Elections</button>
     </nav>
 
-    <section id="tab-presidents" class="tab-panel active">
-      <section class="card">
-        <div class="section-head">
-          <div>
-            <p class="kicker">HALL OF PRESIDENTS</p>
-            <h2>Add / Update President</h2>
-            <p class="muted">Basic older president input. For the full advanced Hall editor, use President Hall Control.</p>
-          </div>
-          <button id="save-president" type="button">Save President</button>
-        </div>
-
-        <div class="grid">
-          <input id="pres-number" type="number" placeholder="President number, ex: 45" />
-          <input id="pres-slug" placeholder="Slug, ex: francis-underwood" />
-          <input id="pres-name" placeholder="Full name" />
-          <input id="pres-party" placeholder="Party" />
-
-          <input id="pres-ideology" placeholder="Ideology" />
-          <input id="pres-term-start" placeholder="Term start, ex: Jan. 2009" />
-          <input id="pres-term-end" placeholder="Term end, ex: Jan. 2013" />
-          <input id="pres-status" placeholder="Status, current or former" />
-
-          <input id="pres-vp" placeholder="Vice President" />
-          <input id="pres-first-lady" placeholder="First Lady" />
-          <input id="pres-portrait" placeholder="Portrait image URL" />
-
-          <textarea id="pres-summary" placeholder="Short summary"></textarea>
-          <textarea id="pres-full" placeholder="Full summary"></textarea>
-          <textarea id="pres-accomplishments" placeholder="Major accomplishments"></textarea>
-          <textarea id="pres-scandals" placeholder="Scandals / controversies"></textarea>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="section-head">
-          <div>
-            <p class="kicker">EXISTING</p>
-            <h2>President Records</h2>
-          </div>
-        </div>
-
-        <div id="president-list" class="list">
-          <p class="muted">Loading presidents...</p>
-        </div>
-      </section>
-    </section>
-
-    <section id="tab-economy" class="tab-panel">
+    <section id="tab-economy" class="tab-panel active">
       <section class="card">
         <div class="section-head">
           <div>
@@ -450,8 +418,8 @@
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=18"></script>
-  <script src="./app.js?v=18"></script>
+  <script src="../shared/config.js?v=20"></script>
+  <script src="./app.js?v=20"></script>
 
   <script>
     window.addEventListener("DOMContentLoaded", () => {
@@ -518,7 +486,7 @@
         };
       });
 
-      openTab("presidents");
+      openTab("economy");
 
       const addYearBtn = document.getElementById("add-economy-year-row");
       const buildJsonBtn = document.getElementById("build-economy-json");
