@@ -1,1 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>APRP Government Archive</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./archive.css?v=11" />
+</head>
+
+<body>
+  <header class="archive-header">
+    <div>
+      <p class="kicker">APRP GOVERNMENT</p>
+      <h1>Current Government</h1>
+      <p class="subline">Regions, governors, senators, House seats, party control, vacancies, and office holders.</p>
+    </div>
+
+    <nav class="top-links">
+      <a href="./index.html">Live Results</a>
+      <a href="./archive.html">Archive Hub</a>
+      <a href="./presidents.html">Presidents</a>
+      <a href="./government.html">Government</a>
+      <a href="./economy.html">Economy</a>
+      <a href="./elections.html">Elections</a>
+      <a href="./timeline.html">Timeline</a>
+      <a href="./laws.html">Laws</a>
+    </nav>
+  </header>
+
+  <main class="archive-shell">
+    <section id="error-box" class="error-box hidden"></section>
+
+    <section class="hero-card government-hero">
+      <p class="kicker">FEDERAL & REGIONAL STRUCTURE</p>
+      <h2>Government Directory</h2>
+      <p>
+        This page pulls from the FEC/government backend. Each region can show its governor,
+        two Senate seats, Senate classes, House seats, parties, vacancies, and current office holders.
+      </p>
+
+      <div class="quick-buttons">
+        <a href="#government">Regions</a>
+        <a href="./archive.html">Back to Archive</a>
+        <a href="./presidents.html">Presidents</a>
+        <a href="./elections.html">Elections</a>
+      </div>
+    </section>
+
+    <section id="government" class="section-card">
+      <div class="section-head">
+        <div>
+          <p class="kicker">CURRENT GOVERNMENT</p>
+          <h2>Regions, Governors, Senate, and House</h2>
+        </div>
+      </div>
+
+      <div id="government-list" class="region-grid">
+        <p class="muted">Loading government...</p>
+      </div>
+    </section>
+
+    <!-- Hidden placeholders so archive.js can run safely if older cached versions are loaded -->
+    <div class="hidden">
+      <div id="current-title"></div>
+      <div id="current-summary"></div>
+      <div id="macro-stats"></div>
+      <div id="recent-events"></div>
+      <div id="president-list"></div>
+      <div id="economy-list"></div>
+      <div id="potus-election-list"></div>
+      <div id="congress-election-list"></div>
+      <div id="timeline-list"></div>
+      <div id="law-list"></div>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="../shared/config.js?v=11"></script>
+  <script src="./archive.js?v=11"></script>
+</body>
+</html>
