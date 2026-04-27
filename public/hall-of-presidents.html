@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>APRP | Hall of Presidents</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./hall-of-presidents.css?v=1" />
+</head>
+<body>
+  <header class="hall-header">
+    <div class="header-left">
+      <p class="kicker">APRP ARCHIVES</p>
+      <h1>Hall of Presidents</h1>
+      <p class="subline">Presidential records, biographies, actions, scandals, and major timeline events.</p>
+    </div>
+
+    <nav class="top-links">
+      <a href="./index.html">Live Results</a>
+      <a href="./archive.html">Archive</a>
+      <a href="./government.html">Government</a>
+      <a href="./economy.html">Economy</a>
+      <a href="./timeline.html">Timeline</a>
+    </nav>
+  </header>
+
+  <main class="hall-shell">
+    <section id="error-box" class="error-box hidden"></section>
+
+    <div class="hall-layout">
+      <aside class="president-sidebar">
+        <div class="sidebar-top">
+          <div>
+            <p class="kicker">APRP TIMELINE</p>
+            <h2>Presidents</h2>
+          </div>
+
+          <a class="edit-link" href="../archive-control-v6/halls.html">Edit Previous Halls</a>
+        </div>
+
+        <div id="president-sidebar-list" class="president-sidebar-list"></div>
+
+        <div class="sidebar-note">
+          <p>Changes made in archive control are reflected here automatically after refresh.</p>
+        </div>
+      </aside>
+
+      <section class="hall-main">
+        <section id="hero-card" class="hero-card party-neutral">
+          <div class="hero-left">
+            <img id="president-portrait" class="president-portrait" src="" alt="President portrait" />
+          </div>
+
+          <div class="hero-center">
+            <div class="hero-topline">
+              <span id="president-number" class="pill">#--</span>
+              <span id="president-party-badge" class="pill party-pill">Party</span>
+              <span id="president-term" class="pill outline-pill">Term</span>
+            </div>
+
+            <h2 id="president-name" class="hero-name">Loading president...</h2>
+            <p id="president-short-summary" class="hero-summary">Loading archive profile...</p>
+          </div>
+
+          <div class="hero-right seal-wrap">
+            <div class="seal-bg"></div>
+          </div>
+        </section>
+
+        <section class="content-grid">
+          <div class="left-column">
+            <section class="content-card">
+              <div class="card-head">
+                <span class="section-icon">☰</span>
+                <h3>Summary</h3>
+              </div>
+              <div id="summary-text" class="prose-block"></div>
+            </section>
+
+            <section class="content-card">
+              <div class="card-head">
+                <span class="section-icon">🏆</span>
+                <h3>Accomplishments</h3>
+              </div>
+              <ul id="accomplishments-list" class="bullet-list"></ul>
+            </section>
+
+            <section class="content-card">
+              <div class="card-head">
+                <span class="section-icon">⚠</span>
+                <h3>Scandals / Criticisms</h3>
+              </div>
+              <ul id="scandals-list" class="bullet-list red-list"></ul>
+            </section>
+          </div>
+
+          <div class="center-column">
+            <section class="content-card">
+              <div class="card-head">
+                <span class="section-icon">◎</span>
+                <h3>Top Actions</h3>
+              </div>
+              <ol id="actions-list" class="number-list"></ol>
+            </section>
+
+            <section class="content-card">
+              <div class="card-head">
+                <span class="section-icon">⚡</span>
+                <h3>Key Events & Crises</h3>
+              </div>
+              <div id="events-list" class="events-list"></div>
+            </section>
+          </div>
+
+          <div class="right-column">
+            <section class="info-tile">
+              <div class="tile-label">Vice President</div>
+              <div id="vp-value" class="tile-value">—</div>
+            </section>
+
+            <section class="info-tile">
+              <div class="tile-label">First Lady / Spouse</div>
+              <div id="spouse-value" class="tile-value">—</div>
+            </section>
+
+            <section class="info-tile">
+              <div class="tile-label">Previous Offices</div>
+              <div id="previous-offices-value" class="tile-value multiline">—</div>
+            </section>
+
+            <section class="info-tile">
+              <div class="tile-label">Education</div>
+              <div id="education-value" class="tile-value multiline">—</div>
+            </section>
+
+            <section class="info-tile">
+              <div class="tile-label">Date of Birth</div>
+              <div id="dob-value" class="tile-value">—</div>
+            </section>
+
+            <section class="info-tile">
+              <div class="tile-label">Place of Birth</div>
+              <div id="pob-value" class="tile-value multiline">—</div>
+            </section>
+
+            <section class="info-tile">
+              <div class="tile-label">Home State</div>
+              <div id="home-state-value" class="tile-value">—</div>
+            </section>
+
+            <section class="info-tile">
+              <div class="tile-label">Political Party</div>
+              <div id="party-value" class="tile-value">—</div>
+            </section>
+
+            <section class="info-tile">
+              <div class="tile-label">Ideology</div>
+              <div id="ideology-value" class="tile-value multiline">—</div>
+            </section>
+          </div>
+        </section>
+
+        <section class="timeline-card">
+          <div class="card-head">
+            <span class="section-icon">🕒</span>
+            <h3>Presidency Timeline</h3>
+          </div>
+          <div id="timeline-list" class="timeline-strip"></div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="../shared/config.js?v=1"></script>
+  <script src="./hall-of-presidents.js?v=1"></script>
+</body>
+</html>
