@@ -1,1 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>APRP Election Archives</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./archive.css?v=11" />
+</head>
+
+<body>
+  <header class="archive-header">
+    <div>
+      <p class="kicker">APRP ELECTION ARCHIVES</p>
+      <h1>Election Archives</h1>
+      <p class="subline">Presidential election maps, state-by-state results, congressional control charts, and archived race summaries.</p>
+    </div>
+
+    <nav class="top-links">
+      <a href="./index.html">Live Results</a>
+      <a href="./archive.html">Archive Hub</a>
+      <a href="./presidents.html">Presidents</a>
+      <a href="./government.html">Government</a>
+      <a href="./economy.html">Economy</a>
+      <a href="./elections.html">Elections</a>
+      <a href="./timeline.html">Timeline</a>
+      <a href="./laws.html">Laws</a>
+    </nav>
+  </header>
+
+  <main class="archive-shell">
+    <section id="error-box" class="error-box hidden"></section>
+
+    <section class="hero-card">
+      <p class="kicker">RESULTS HISTORY</p>
+      <h2 id="current-title">Election Archive Directory</h2>
+      <p id="current-summary">
+        Browse archived presidential elections, electoral maps, full state-by-state breakdowns, and congressional control results.
+      </p>
+
+      <div class="quick-buttons">
+        <a href="#potus-elections">Presidential Elections</a>
+        <a href="#congress-elections">Congress Elections</a>
+        <a href="./archive.html">Back to Archive</a>
+        <a href="./index.html">Live Results</a>
+      </div>
+    </section>
+
+    <section id="potus-elections" class="section-card">
+      <div class="section-head">
+        <div>
+          <p class="kicker">PRESIDENTIAL</p>
+          <h2>Presidential Election Archives</h2>
+        </div>
+      </div>
+
+      <div id="potus-election-list" class="election-grid">
+        <p class="muted">Loading presidential elections...</p>
+      </div>
+    </section>
+
+    <section id="congress-elections" class="section-card">
+      <div class="section-head">
+        <div>
+          <p class="kicker">CONGRESSIONAL</p>
+          <h2>Congressional Election Archives</h2>
+        </div>
+      </div>
+
+      <div id="congress-election-list" class="election-grid">
+        <p class="muted">Loading congressional elections...</p>
+      </div>
+    </section>
+
+    <!-- Hidden placeholders so archive.js can run safely on this dedicated page -->
+    <div class="hidden">
+      <div id="macro-stats"></div>
+      <div id="recent-events"></div>
+      <div id="president-list"></div>
+      <div id="government-list"></div>
+      <div id="economy-list"></div>
+      <div id="timeline-list"></div>
+      <div id="law-list"></div>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="../shared/config.js?v=11"></script>
+  <script src="./archive.js?v=11"></script>
+</body>
+</html>
