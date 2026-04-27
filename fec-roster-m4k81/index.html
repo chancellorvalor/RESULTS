@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=2" />
+  <link rel="stylesheet" href="./styles.css?v=3" />
 </head>
 
 <body>
@@ -19,7 +19,7 @@
       <div>
         <p class="kicker">APRP FEC ROSTER CONTROL</p>
         <h1>Government Roster</h1>
-        <p>Update regions, state assignments, governors, senators, and representatives only.</p>
+        <p>Compact editor for regions, state assignments, governors, senators, and representatives.</p>
       </div>
 
       <div class="actions">
@@ -38,62 +38,71 @@
     </nav>
 
     <section id="tab-regions" class="tab-panel active">
-      <section class="card">
-        <div class="section-head">
-          <div>
-            <h2>Regions & State Map</h2>
-            <p>Create regions, assign states, edit colors, and click states on the map to move them.</p>
-          </div>
-
-          <div class="head-actions">
-            <button id="create-region">Create Region</button>
-            <button id="save-state-assignments" class="secondary">Save State Assignments</button>
-          </div>
-        </div>
-
-        <div class="region-map-layout">
-          <aside class="region-editor">
-            <div class="mini-head">
-              <h3>Selected Region</h3>
-              <p>Choose a region, then click states on the map to assign them.</p>
+      <section class="region-workspace">
+        <section class="control-card">
+          <div class="card-head">
+            <div>
+              <h2>Region Control</h2>
+              <p>Select a region, edit it, then assign states by dropdown or map click.</p>
             </div>
+            <button id="create-region">New Region</button>
+          </div>
 
+          <div class="form-stack">
             <label>
-              Region
+              Selected Region
               <select id="selected-region"></select>
             </label>
 
             <div id="selected-region-editor" class="selected-region-editor"></div>
 
-            <div class="mini-head state-list-head">
-              <h3>States in Region</h3>
-              <p>These states currently belong to the selected region.</p>
+            <div class="divider"></div>
+
+            <div class="mini-title">
+              <h3>Add State to Region</h3>
+              <p>Use this if you do not want to click the map.</p>
+            </div>
+
+            <div class="inline-controls">
+              <label>
+                State
+                <select id="state-to-assign"></select>
+              </label>
+              <button id="assign-state-dropdown">Assign</button>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="mini-title">
+              <h3>States in Selected Region</h3>
+              <p>Click a state chip to remove it from the region.</p>
             </div>
 
             <div id="selected-region-states" class="state-chip-list"></div>
-          </aside>
 
-          <section class="map-panel">
-            <div class="map-toolbar">
-              <div>
-                <strong>Region Map</strong>
-                <span>Click a state to assign it to the selected region.</span>
-              </div>
-              <button id="reset-map" class="secondary">Reset map</button>
+            <button id="save-state-assignments" class="wide-save">Save State Assignments</button>
+          </div>
+        </section>
+
+        <section class="map-card">
+          <div class="map-head">
+            <div>
+              <h2>Region Map</h2>
+              <p>Click a state to assign it to the selected region.</p>
             </div>
+            <button id="reset-map" class="secondary">Reset Map</button>
+          </div>
 
-            <div id="region-map" class="region-map"></div>
-
-            <div id="map-legend" class="map-legend"></div>
-          </section>
-        </div>
+          <div id="region-map" class="region-map"></div>
+          <div id="map-legend" class="map-legend"></div>
+        </section>
       </section>
 
       <section class="card">
         <div class="section-head compact">
           <div>
             <h2>All Regions</h2>
-            <p>Compact editor for every region.</p>
+            <p>Compact region list. Use selected-region editor above for main editing.</p>
           </div>
         </div>
 
@@ -104,7 +113,7 @@
                 <th>Name</th>
                 <th>Slug</th>
                 <th>Cycle</th>
-                <th>Map Label</th>
+                <th>Label</th>
                 <th>Color</th>
                 <th>Order</th>
                 <th>Active</th>
@@ -122,12 +131,9 @@
         <div class="section-head">
           <div>
             <h2>Senate Seats</h2>
-            <p>Compact rows. Set seat name, class, filler, party, term, and vacancy status.</p>
+            <p>Region, seat name, class, holder, party, term, and status.</p>
           </div>
-
-          <div class="head-actions">
-            <button id="add-senate-seat">Add Senate Seat</button>
-          </div>
+          <button id="add-senate-seat">Add Senate Seat</button>
         </div>
 
         <div class="filter-row">
@@ -145,10 +151,10 @@
                 <th>Seat Name</th>
                 <th>Class</th>
                 <th>Custom Class</th>
-                <th>Filler</th>
+                <th>Holder</th>
                 <th>Party</th>
-                <th>Term Start</th>
-                <th>Term End</th>
+                <th>Start</th>
+                <th>End</th>
                 <th>Status</th>
                 <th>Order</th>
                 <th>Save</th>
@@ -165,7 +171,7 @@
         <div class="section-head">
           <div>
             <h2>Governors</h2>
-            <p>Set governor, party, lieutenant governor, term, and vacancy status.</p>
+            <p>Governor, party, lieutenant governor, term, and status.</p>
           </div>
         </div>
 
@@ -179,8 +185,8 @@
                 <th>Party</th>
                 <th>Lt. Gov</th>
                 <th>Lt. Party</th>
-                <th>Term Start</th>
-                <th>Term End</th>
+                <th>Start</th>
+                <th>End</th>
                 <th>Status</th>
                 <th>Save</th>
               </tr>
@@ -196,12 +202,9 @@
         <div class="section-head">
           <div>
             <h2>House Seats</h2>
-            <p>Compact rows for district, area, holder, party, term, and status.</p>
+            <p>District, area, holder, party, term, and status.</p>
           </div>
-
-          <div class="head-actions">
-            <button id="add-house-seat">Add House Seat</button>
-          </div>
+          <button id="add-house-seat">Add House Seat</button>
         </div>
 
         <div class="filter-row">
@@ -218,10 +221,10 @@
                 <th>Region</th>
                 <th>District</th>
                 <th>Area</th>
-                <th>Filler</th>
+                <th>Holder</th>
                 <th>Party</th>
-                <th>Term Start</th>
-                <th>Term End</th>
+                <th>Start</th>
+                <th>End</th>
                 <th>Status</th>
                 <th>Order</th>
                 <th>Save</th>
@@ -236,7 +239,7 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=2"></script>
-  <script src="./app.js?v=2"></script>
+  <script src="../shared/config.js?v=3"></script>
+  <script src="./app.js?v=3"></script>
 </body>
 </html>
