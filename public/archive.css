@@ -89,7 +89,7 @@ a {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
-  max-width: 720px;
+  max-width: 760px;
 }
 
 .top-links a {
@@ -302,12 +302,29 @@ a {
   margin-bottom: 20px;
 }
 
+.section-head.compact {
+  margin-bottom: 12px;
+}
+
 .section-head h2 {
   margin: 0;
   font-size: clamp(24px, 3vw, 38px);
   line-height: 1;
   font-weight: 900;
   letter-spacing: -0.035em;
+}
+
+.section-head h3 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.section-head p {
+  margin: 7px 0 0;
+  color: var(--soft);
+  line-height: 1.5;
 }
 
 .section-grid {
@@ -610,7 +627,7 @@ a {
   font-weight: 700;
 }
 
-/* ECONOMY DASHBOARD V15 */
+/* ECONOMY DASHBOARD V16 */
 
 .economy-page {
   display: flex;
@@ -740,6 +757,7 @@ a {
   letter-spacing: 0.08em;
 }
 
+/* Legacy bar chart fallback */
 .economy-bars {
   height: 270px;
   display: flex;
@@ -892,6 +910,118 @@ a {
   color: #94a3b8;
 }
 
+/* SVG LINE CHARTS V16 */
+
+.line-chart-card {
+  width: 100%;
+}
+
+.svg-chart-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.svg-line-chart {
+  width: 100%;
+  min-width: 620px;
+  display: block;
+}
+
+.chart-bg {
+  fill: rgba(15, 23, 42, 0.18);
+}
+
+.chart-grid-line {
+  stroke: rgba(148, 163, 184, 0.16);
+  stroke-width: 1;
+}
+
+.chart-axis-line {
+  stroke: rgba(226, 232, 240, 0.35);
+  stroke-width: 1.4;
+}
+
+.chart-axis-label {
+  fill: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.22));
+}
+
+.chart-line.line-primary {
+  stroke: #60a5fa;
+}
+
+.chart-line.line-secondary {
+  stroke: #f87171;
+}
+
+.chart-line.line-tertiary {
+  stroke: #f59e0b;
+}
+
+.chart-dot {
+  stroke: #020817;
+  stroke-width: 2;
+}
+
+.chart-dot.line-primary {
+  fill: #60a5fa;
+}
+
+.chart-dot.line-secondary {
+  fill: #f87171;
+}
+
+.chart-dot.line-tertiary {
+  fill: #f59e0b;
+}
+
+.line-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: -8px 0 14px;
+}
+
+.line-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.line-legend-item i {
+  width: 24px;
+  height: 4px;
+  display: inline-block;
+  border-radius: 999px;
+}
+
+.line-legend-item i.line-primary {
+  background: #60a5fa;
+}
+
+.line-legend-item i.line-secondary {
+  background: #f87171;
+}
+
+.line-legend-item i.line-tertiary {
+  background: #f59e0b;
+}
+
 @media (max-width: 1200px) {
   .archive-header {
     flex-direction: column;
@@ -992,5 +1122,9 @@ a {
 
   .budget-data-btn {
     width: 100%;
+  }
+
+  .svg-line-chart {
+    min-width: 560px;
   }
 }
