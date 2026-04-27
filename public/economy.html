@@ -9,15 +9,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./archive.css?v=13" />
+  <link rel="stylesheet" href="./archive.css?v=15" />
 </head>
 
 <body>
   <header class="archive-header">
     <div>
       <p class="kicker">APRP ECONOMY</p>
-      <h1>Economic Archive</h1>
-      <p class="subline">Current, yearly, and monthly macroeconomic snapshots with custom JSON chart support.</p>
+      <h1>Economic Dashboard</h1>
+      <p class="subline">Core macro stats, market indicators, budget pressure, jobs, wages, approval, energy, and yearly fiscal trends.</p>
     </div>
 
     <nav class="top-links">
@@ -32,54 +32,145 @@
     </nav>
   </header>
 
-  <main class="archive-shell">
+  <main class="archive-shell economy-page">
     <section id="error-box" class="error-box hidden"></section>
 
-    <section class="hero-grid">
-      <section class="hero-card">
-        <p class="kicker">MACRO SNAPSHOTS</p>
-        <h2 id="current-title">Economy Dashboard</h2>
-        <p id="current-summary">
-          View APRP GDP, growth, unemployment, inflation, debt, deficit, and custom charts from archive records.
-        </p>
+    <section class="economy-hero">
+      <div>
+        <p class="kicker">CURRENT ECONOMIC SNAPSHOT</p>
+        <h2 id="economy-title">Loading economy...</h2>
+        <p id="economy-summary">Pulling latest macroeconomic archive data.</p>
+      </div>
 
-        <div class="quick-buttons">
-          <a href="#economy">Snapshots</a>
-          <a href="./archive.html">Back to Archive</a>
-          <a href="./elections.html">Election Archives</a>
-          <a href="./government.html">Government</a>
-        </div>
-      </section>
-
-      <aside class="info-panel">
-        <h3>Key Macro Stats</h3>
-        <div id="macro-stats" class="stat-grid">
-          <p class="muted">Loading macro stats...</p>
-        </div>
-
-        <h3>Recent Events</h3>
-        <div id="recent-events" class="mini-list">
-          <p class="muted">Loading recent events...</p>
-        </div>
-      </aside>
+      <div class="budget-link-wrap">
+        <a
+          class="budget-data-btn"
+          href="https://docs.google.com/spreadsheets/d/1B0ba1Zc3Ec25f4Wm3MKeqiD3yBbE20iYvrDPL7Lb838/edit?usp=sharing"
+          target="_blank"
+          rel="noopener"
+        >
+          Open Budget Data Sheet
+        </a>
+      </div>
     </section>
 
-    <section id="economy" class="section-card">
+    <section class="section-card">
       <div class="section-head">
         <div>
-          <p class="kicker">ECONOMY</p>
-          <h2>Economy Snapshots & Charts</h2>
+          <p class="kicker">CORE MACRO STATS</p>
+          <h2>Current National Economy</h2>
         </div>
       </div>
 
-      <div id="economy-list" class="snapshot-grid">
-        <p class="muted">Loading economy...</p>
+      <div id="core-macro-stats" class="economy-stat-grid">
+        <p class="muted">Loading macro stats...</p>
+      </div>
+    </section>
+
+    <section class="economy-grid two">
+      <section class="section-card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">MARKETS</p>
+            <h2>Monthly Stock Market Index</h2>
+          </div>
+        </div>
+        <div id="stock-index-chart" class="economy-chart-box"></div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">ENERGY</p>
+            <h2>Monthly Oil Prices</h2>
+          </div>
+        </div>
+        <div id="oil-price-chart" class="economy-chart-box"></div>
+      </section>
+    </section>
+
+    <section class="economy-grid two">
+      <section class="section-card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">PUBLIC OPINION</p>
+            <h2>POTUS Approval</h2>
+          </div>
+        </div>
+        <div id="potus-approval-chart" class="economy-chart-box"></div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">YEARLY OUTPUT</p>
+            <h2>GDP and Debt</h2>
+          </div>
+        </div>
+        <div id="gdp-debt-chart" class="economy-chart-box"></div>
+      </section>
+    </section>
+
+    <section class="economy-grid two">
+      <section class="section-card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">YEARLY GROWTH</p>
+            <h2>GDP Growth</h2>
+          </div>
+        </div>
+        <div id="gdp-growth-chart" class="economy-chart-box"></div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">BUDGET PRESSURE</p>
+            <h2>Interest, Deficit %, and Defense %</h2>
+          </div>
+        </div>
+        <div id="budget-pressure-chart" class="economy-chart-box"></div>
+      </section>
+    </section>
+
+    <section class="economy-grid two">
+      <section class="section-card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">LABOR MARKET</p>
+            <h2>Yearly Job Creation</h2>
+          </div>
+        </div>
+        <div id="job-creation-chart" class="economy-chart-box"></div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">HOUSEHOLD ECONOMY</p>
+            <h2>Median Wage</h2>
+          </div>
+        </div>
+        <div id="median-wage-chart" class="economy-chart-box"></div>
+      </section>
+    </section>
+
+    <section class="section-card">
+      <div class="section-head">
+        <div>
+          <p class="kicker">ARCHIVE RECORDS</p>
+          <h2>Economy Snapshots</h2>
+        </div>
+      </div>
+
+      <div id="economy-records" class="snapshot-grid">
+        <p class="muted">Loading economy records...</p>
       </div>
     </section>
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=13"></script>
-  <script src="./archive.js?v=13"></script>
+  <script src="../shared/config.js?v=15"></script>
+  <script src="./economy.js?v=15"></script>
 </body>
 </html>
