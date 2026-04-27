@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./styles.css?v=17" />
+  <link rel="stylesheet" href="./styles.css?v=18" />
 </head>
 
 <body>
@@ -450,11 +450,10 @@
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=17"></script>
-  <script src="./app.js?v=17"></script>
+  <script src="../shared/config.js?v=18"></script>
+  <script src="./app.js?v=18"></script>
 
   <script>
-    // Backup login wiring in case app.js fails before binding the button.
     window.addEventListener("DOMContentLoaded", () => {
       const ACCESS_CODE = "39333349";
 
@@ -480,7 +479,6 @@
         if (shell) shell.style.display = "flex";
 
         document.body.classList.add("archive-unlocked");
-        console.log("Archive control unlocked by backup handler.");
       }
 
       if (button) {
@@ -489,13 +487,65 @@
 
       if (input) {
         input.addEventListener("keydown", event => {
-          if (event.key === "Enter") {
-            unlockArchiveControl();
-          }
+          if (event.key === "Enter") unlockArchiveControl();
         });
       }
 
-      console.log("Backup archive login handler loaded.");
+      const tabButtons = document.querySelectorAll(".tab-btn");
+      const tabPanels = document.querySelectorAll(".tab-panel");
+
+      function openTab(tabName) {
+        tabButtons.forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.tab === tabName);
+        });
+
+        tabPanels.forEach(panel => {
+          panel.classList.remove("active");
+          panel.style.display = "none";
+        });
+
+        const target = document.getElementById("tab-" + tabName);
+        if (target) {
+          target.classList.add("active");
+          target.style.display = "flex";
+        }
+      }
+
+      tabButtons.forEach(btn => {
+        btn.onclick = () => {
+          const tabName = btn.dataset.tab;
+          if (tabName) openTab(tabName);
+        };
+      });
+
+      openTab("presidents");
+
+      const addYearBtn = document.getElementById("add-economy-year-row");
+      const buildJsonBtn = document.getElementById("build-economy-json");
+      const saveEconomyBtn = document.getElementById("save-economy");
+
+      if (addYearBtn && typeof window.addEconomyYearRow === "function") {
+        addYearBtn.onclick = () => window.addEconomyYearRow();
+      }
+
+      if (buildJsonBtn && typeof window.buildEconomyChartJson === "function") {
+        buildJsonBtn.onclick = () => window.buildEconomyChartJson();
+      }
+
+      if (saveEconomyBtn && typeof window.buildEconomyChartJson === "function") {
+        saveEconomyBtn.addEventListener("click", () => {
+          window.buildEconomyChartJson();
+        }, true);
+      }
+
+      const yearRows = document.getElementById("economy-year-rows");
+      if (yearRows && !yearRows.children.length && typeof window.addEconomyYearRow === "function") {
+        window.addEconomyYearRow({ year: 2008 });
+        window.addEconomyYearRow({ year: 2009 });
+        window.addEconomyYearRow({ year: 2010 });
+      }
+
+      console.log("Backup archive login, tab, and economy chart handler loaded.");
     });
   </script>
 </body>
