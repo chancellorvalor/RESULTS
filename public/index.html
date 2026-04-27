@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=9" />
+  <link rel="stylesheet" href="./styles.css?v=10" />
 </head>
 
 <body>
@@ -118,11 +118,11 @@
           </div>
 
           <div class="map-actions">
-            <button id="map-mode-called" class="secondary-btn">Called races</button>
-            <button id="map-mode-lead" class="secondary-btn">Strength of lead</button>
-            <button id="map-mode-turnout" class="secondary-btn">Vote count status</button>
-            <button id="reset-map" class="secondary-btn">Reset map</button>
-            <button id="toggle-legend" class="secondary-btn">Legend</button>
+            <button id="map-mode-called" class="secondary-btn active-map-mode" type="button">Called races</button>
+            <button id="map-mode-lead" class="secondary-btn" type="button">Strength of lead</button>
+            <button id="map-mode-turnout" class="secondary-btn" type="button">Vote count status</button>
+            <button id="reset-map" class="secondary-btn" type="button">Reset map</button>
+            <button id="toggle-legend" class="secondary-btn" type="button">Legend</button>
           </div>
         </div>
 
@@ -181,7 +181,7 @@
     <div class="modal-backdrop" id="modal-close-backdrop"></div>
 
     <div class="modal-card">
-      <button id="modal-close" class="modal-close">×</button>
+      <button id="modal-close" class="modal-close" type="button">×</button>
 
       <div class="modal-top">
         <div>
@@ -254,7 +254,7 @@
     <div class="modal-backdrop" id="path-close-backdrop"></div>
 
     <div class="modal-card large">
-      <button id="path-close" class="modal-close">×</button>
+      <button id="path-close" class="modal-close" type="button">×</button>
 
       <div class="modal-top">
         <div>
@@ -282,7 +282,46 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=9"></script>
-  <script src="./app.js?v=9"></script>
+  <script src="../shared/config.js?v=10"></script>
+  <script src="./app.js?v=10"></script>
+
+  <script>
+    window.addEventListener("load", () => {
+      const calledBtn = document.getElementById("map-mode-called");
+      const leadBtn = document.getElementById("map-mode-lead");
+      const turnoutBtn = document.getElementById("map-mode-turnout");
+
+      function activate(btn) {
+        [calledBtn, leadBtn, turnoutBtn].forEach(b => {
+          if (b) b.classList.remove("active-map-mode");
+        });
+
+        if (btn) btn.classList.add("active-map-mode");
+      }
+
+      if (calledBtn) {
+        calledBtn.onclick = () => {
+          activate(calledBtn);
+          window.__setMapMode?.("called");
+        };
+      }
+
+      if (leadBtn) {
+        leadBtn.onclick = () => {
+          activate(leadBtn);
+          window.__setMapMode?.("lead");
+        };
+      }
+
+      if (turnoutBtn) {
+        turnoutBtn.onclick = () => {
+          activate(turnoutBtn);
+          window.__setMapMode?.("turnout");
+        };
+      }
+
+      console.log("Fallback map mode button wiring loaded.");
+    });
+  </script>
 </body>
 </html>
