@@ -70,32 +70,36 @@
   }
 
   function wireEvents() {
-    els.refresh.onclick = loadData;
+    if (els.refresh) els.refresh.onclick = loadData;
 
     els.tabs.forEach(btn => {
       btn.onclick = () => switchTab(btn.dataset.tab);
     });
 
-    els.createRegion.onclick = createRegion;
-    els.saveStateAssignments.onclick = saveStateAssignments;
-    els.assignStateDropdown.onclick = assignStateFromDropdown;
-    els.deleteSelectedRegion.onclick = deleteSelectedRegion;
+    if (els.createRegion) els.createRegion.onclick = createRegion;
+    if (els.saveStateAssignments) els.saveStateAssignments.onclick = saveStateAssignments;
+    if (els.assignStateDropdown) els.assignStateDropdown.onclick = assignStateFromDropdown;
+    if (els.deleteSelectedRegion) els.deleteSelectedRegion.onclick = deleteSelectedRegion;
 
-    els.selectedRegion.onchange = () => {
-      selectedRegionId = els.selectedRegion.value;
-      renderSelectedRegion();
-      drawMap();
-    };
+    if (els.selectedRegion) {
+      els.selectedRegion.onchange = () => {
+        selectedRegionId = els.selectedRegion.value;
+        renderSelectedRegion();
+        drawMap();
+      };
+    }
 
-    els.resetMap.onclick = () => {
-      map?.flyTo({ center: [-98.5795, 39.8283], zoom: 3.35 });
-    };
+    if (els.resetMap) {
+      els.resetMap.onclick = () => {
+        map?.flyTo({ center: [-98.5795, 39.8283], zoom: 3.35 });
+      };
+    }
 
-    els.senateRegionFilter.onchange = renderSenateTable;
-    els.houseRegionFilter.onchange = renderHouseTable;
+    if (els.senateRegionFilter) els.senateRegionFilter.onchange = renderSenateTable;
+    if (els.houseRegionFilter) els.houseRegionFilter.onchange = renderHouseTable;
 
-    els.addSenateSeat.onclick = createSenateSeat;
-    els.addHouseSeat.onclick = createHouseSeat;
+    if (els.addSenateSeat) els.addSenateSeat.onclick = createSenateSeat;
+    if (els.addHouseSeat) els.addHouseSeat.onclick = createHouseSeat;
   }
 
   function switchTab(tab) {
@@ -111,12 +115,14 @@
   }
 
   async function loadGeoJson() {
-    const res = await fetch("../public/data/states.geojson?v=4");
+    const res = await fetch("../public/data/states.geojson?v=24");
     if (!res.ok) throw new Error("Could not load states.geojson from public/data.");
     geojson = await res.json();
   }
 
   function initMap() {
+    if (!document.getElementById("region-map") || !window.maplibregl) return;
+
     map = new maplibregl.Map({
       container: "region-map",
       style: {
@@ -173,10 +179,94 @@
 
       renderAll();
       drawMap();
-      showSuccess("Government roster loaded.");
+
+      await publishPublicRoster();
+
+      showSuccess("Government roster loaded and public map roster synced.");
     } catch (err) {
       showError("Could not load FEC roster data. " + (err.message || err));
     }
+  }
+
+  async function publishPublicRoster() {
+    const now = new Date().toISOString();
+
+    const regionStateMap = {};
+    regionStates.forEach(item => {
+      regionStateMap[normalizeAbbr(item.state_abbr)] = {
+        region_id: item.region_id,
+        state_abbr: normalizeAbbr(item.state_abbr),
+        state_name: item.state_name || stateNameByAbbr(item.state_abbr)
+      };
+    });
+
+    const payload = {
+      version: 1,
+      synced_at: now,
+      regions: regions.map(region => ({
+        id: region.id,
+        name: region.name || "",
+        slug: region.slug || "",
+        cycle_type: region.cycle_type || "",
+        map_label: region.map_label || "",
+        color: region.color || "",
+        sort_order: Number(region.sort_order || 0),
+        description: region.description || "",
+        is_active: region.is_active !== false
+      })),
+      region_states: Object.values(regionStateMap),
+      senate_seats: senateSeats.map(seat => ({
+        id: seat.id,
+        region_id: seat.region_id,
+        region_name: regionById(seat.region_id)?.name || "",
+        seat_name: seat.seat_name || "",
+        seat_class: seat.seat_class || "",
+        custom_class: seat.custom_class || "",
+        holder: seat.filler_name || "",
+        party: seat.filler_party || "",
+        term_start: seat.term_start || "",
+        term_end: seat.term_end || "",
+        status: seat.status || "",
+        sort_order: Number(seat.sort_order || 0)
+      })),
+      governors: governors.map(gov => ({
+        id: gov.id,
+        region_id: gov.region_id,
+        region_name: regionById(gov.region_id)?.name || "",
+        office_name: gov.office_name || "",
+        governor_name: gov.governor_name || "",
+        governor_party: gov.governor_party || "",
+        lt_governor_name: gov.lt_governor_name || "",
+        lt_governor_party: gov.lt_governor_party || "",
+        term_start: gov.term_start || "",
+        term_end: gov.term_end || "",
+        status: gov.status || ""
+      })),
+      house_seats: houseSeats.map(seat => ({
+        id: seat.id,
+        region_id: seat.region_id,
+        region_name: regionById(seat.region_id)?.name || "",
+        district_code: seat.district_code || "",
+        district_name: seat.district_name || "",
+        district_area: seat.district_area || "",
+        holder: seat.filler_name || "",
+        party: seat.filler_party || "",
+        term_start: seat.term_start || "",
+        term_end: seat.term_end || "",
+        status: seat.status || "",
+        sort_order: Number(seat.sort_order || 0)
+      }))
+    };
+
+    const { error } = await supabase
+      .from("government_public_roster")
+      .upsert({
+        id: "current",
+        updated_at: now,
+        data: payload
+      }, { onConflict: "id" });
+
+    if (error) throw error;
   }
 
   function renderAll() {
@@ -196,19 +286,23 @@
       ...regions.map(r => `<option value="${escAttr(r.id)}">${esc(r.name)}</option>`)
     ].join("");
 
-    els.senateRegionFilter.innerHTML = allOptions;
-    els.houseRegionFilter.innerHTML = allOptions;
+    if (els.senateRegionFilter) els.senateRegionFilter.innerHTML = allOptions;
+    if (els.houseRegionFilter) els.houseRegionFilter.innerHTML = allOptions;
 
-    els.selectedRegion.innerHTML = regions.map(r => {
-      const selected = r.id === selectedRegionId ? "selected" : "";
-      const cycle = r.cycle_type ? ` | ${r.cycle_type}` : "";
-      return `<option value="${escAttr(r.id)}" ${selected}>${esc(r.name + cycle)}</option>`;
-    }).join("");
+    if (els.selectedRegion) {
+      els.selectedRegion.innerHTML = regions.map(r => {
+        const selected = r.id === selectedRegionId ? "selected" : "";
+        const cycle = r.cycle_type ? ` | ${r.cycle_type}` : "";
+        return `<option value="${escAttr(r.id)}" ${selected}>${esc(r.name + cycle)}</option>`;
+      }).join("");
 
-    els.selectedRegion.value = selectedRegionId;
+      els.selectedRegion.value = selectedRegionId;
+    }
   }
 
   function renderStateDropdown() {
+    if (!els.stateToAssign) return;
+
     els.stateToAssign.innerHTML = allStates.map(([abbr, name]) => {
       const current = getStateAssignment(abbr);
       const suffix = current ? ` — currently ${regionById(current.region_id)?.name || "assigned"}` : " — unassigned";
@@ -217,6 +311,8 @@
   }
 
   function renderSelectedRegion() {
+    if (!els.selectedRegionEditor || !els.selectedRegionStates) return;
+
     const region = regions.find(r => r.id === selectedRegionId);
 
     if (!region) {
@@ -284,6 +380,8 @@
   }
 
   function renderRegionsTable() {
+    if (!els.regionsTable) return;
+
     els.regionsTable.innerHTML = regions.map(region => `
       <tr data-region-id="${escAttr(region.id)}">
         <td><input data-region-field="name" value="${escAttr(region.name || "")}"></td>
@@ -308,7 +406,9 @@
   }
 
   function renderSenateTable() {
-    const filter = els.senateRegionFilter.value;
+    if (!els.senateTable) return;
+
+    const filter = els.senateRegionFilter?.value || "";
 
     const list = senateSeats
       .filter(s => !filter || s.region_id === filter)
@@ -356,6 +456,8 @@
   }
 
   function renderGovernorTable() {
+    if (!els.governorTable) return;
+
     els.governorTable.innerHTML = governors
       .sort((a, b) => regionSort(a.region_id, b.region_id))
       .map(governor => `
@@ -386,7 +488,9 @@
   }
 
   function renderHouseTable() {
-    const filter = els.houseRegionFilter.value;
+    if (!els.houseTable) return;
+
+    const filter = els.houseRegionFilter?.value || "";
 
     const list = houseSeats
       .filter(s => !filter || s.region_id === filter)
@@ -504,6 +608,8 @@
   }
 
   function renderLegend() {
+    if (!els.legend) return;
+
     els.legend.innerHTML = regions.map(r => `
       <div class="legend-item">
         <span class="legend-swatch" style="background:${escAttr(r.color || "#64748b")}"></span>
@@ -881,6 +987,11 @@
       .sort((a, b) => String(a.state_name || "").localeCompare(String(b.state_name || "")));
   }
 
+  function stateNameByAbbr(abbr) {
+    const clean = normalizeAbbr(abbr);
+    return allStates.find(([a]) => a === clean)?.[1] || clean;
+  }
+
   function regionById(id) {
     return regions.find(r => r.id === id);
   }
@@ -925,21 +1036,23 @@
   }
 
   function showError(msg) {
+    if (!els.error) return;
     els.error.textContent = msg;
     els.error.classList.remove("hidden");
-    els.success.classList.add("hidden");
+    els.success?.classList.add("hidden");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function showSuccess(msg) {
+    if (!els.success) return;
     els.success.textContent = msg;
     els.success.classList.remove("hidden");
-    els.error.classList.add("hidden");
+    els.error?.classList.add("hidden");
   }
 
   function hideBoxes() {
-    els.error.classList.add("hidden");
-    els.success.classList.add("hidden");
+    els.error?.classList.add("hidden");
+    els.success?.classList.add("hidden");
   }
 
   function esc(s) {
