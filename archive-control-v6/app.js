@@ -42,6 +42,7 @@
   async function init() {
     const unlocked = setupLoginGate();
     if (!unlocked) return;
+
     wireEvents();
     await loadData();
   }
@@ -339,58 +340,107 @@
     }
   }
 
+  async function deleteRecord(table, id, label) {
+    try {
+      hideBoxes();
+
+      if (!id) throw new Error("Missing record id.");
+
+      const ok = confirm(`Delete this ${label}? This cannot be undone.`);
+      if (!ok) return;
+
+      const { error } = await supabase.from(table).delete().eq("id", id);
+      if (error) throw error;
+
+      showSuccess(`${label} deleted.`);
+      await loadData();
+    } catch (err) {
+      showError(`Could not delete ${label}. ` + (err.message || err));
+    }
+  }
+
   function renderPresidents(rows) {
     els.presidentList.innerHTML = rows.map(p => `
       <div class="item-row">
-        <strong>#${esc(p.number || "")} ${esc(p.full_name)}</strong>
-        <span>${esc(p.party || "")} • ${esc(p.term_start || "")}${p.term_end ? "–" + esc(p.term_end) : ""} • ${esc(p.status || "")}</span>
+        <div>
+          <strong>#${esc(p.number || "")} ${esc(p.full_name)}</strong>
+          <span>${esc(p.party || "")} • ${esc(p.term_start || "")}${p.term_end ? "–" + esc(p.term_end) : ""} • ${esc(p.status || "")}</span>
+        </div>
+        <button class="danger small-delete" data-delete-table="president_entries" data-delete-id="${escAttr(p.id)}" data-delete-label="president">Delete</button>
       </div>
     `).join("") || `<p class="muted">No presidents yet.</p>`;
+    wireDeleteButtons();
   }
 
   function renderEconomy(rows) {
     els.economyList.innerHTML = rows.map(e => `
       <div class="item-row">
-        <strong>${esc(e.label || `${e.year}${e.month ? "-" + e.month : ""}`)}</strong>
-        <span>${esc(e.period_type)} • GDP ${money(e.gdp)} • Growth ${pct(e.gdp_growth)} • Charts: ${chartCount(e.chart_json)}</span>
+        <div>
+          <strong>${esc(e.label || `${e.year}${e.month ? "-" + e.month : ""}`)}</strong>
+          <span>${esc(e.period_type)} • GDP ${money(e.gdp)} • Growth ${pct(e.gdp_growth)} • Charts: ${chartCount(e.chart_json)}</span>
+        </div>
+        <button class="danger small-delete" data-delete-table="economy_snapshots" data-delete-id="${escAttr(e.id)}" data-delete-label="economy snapshot">Delete</button>
       </div>
     `).join("") || `<p class="muted">No economy snapshots yet.</p>`;
+    wireDeleteButtons();
   }
 
   function renderEvents(rows) {
     els.eventList.innerHTML = rows.map(e => `
       <div class="item-row">
-        <strong>${esc(e.title)}</strong>
-        <span>${esc(e.date_label || e.year || "")} • ${esc(e.category || "")} • Importance ${esc(e.importance || 0)}</span>
+        <div>
+          <strong>${esc(e.title)}</strong>
+          <span>${esc(e.date_label || e.year || "")} • ${esc(e.category || "")} • Importance ${esc(e.importance || 0)}</span>
+        </div>
+        <button class="danger small-delete" data-delete-table="timeline_events" data-delete-id="${escAttr(e.id)}" data-delete-label="timeline event">Delete</button>
       </div>
     `).join("") || `<p class="muted">No events yet.</p>`;
+    wireDeleteButtons();
   }
 
   function renderLaws(rows) {
     els.lawList.innerHTML = rows.map(l => `
       <div class="item-row">
-        <strong>${esc(l.title)}</strong>
-        <span>${esc(l.date_signed || l.year || "")} • ${esc(l.status || "")} • ${esc(l.funding || "")}</span>
+        <div>
+          <strong>${esc(l.title)}</strong>
+          <span>${esc(l.date_signed || l.year || "")} • ${esc(l.status || "")} • ${esc(l.funding || "")}</span>
+        </div>
+        <button class="danger small-delete" data-delete-table="laws" data-delete-id="${escAttr(l.id)}" data-delete-label="law">Delete</button>
       </div>
     `).join("") || `<p class="muted">No laws yet.</p>`;
+    wireDeleteButtons();
   }
 
   function renderPotusElections(rows) {
     els.potusElectionList.innerHTML = rows.map(e => `
       <div class="item-row">
-        <strong>${esc(e.year)} — ${esc(e.title)}</strong>
-        <span>${esc(e.winner_name)} ${esc(e.winner_ev)} EV defeated ${esc(e.runner_up_name)} ${esc(e.runner_up_ev)} EV</span>
+        <div>
+          <strong>${esc(e.year)} — ${esc(e.title)}</strong>
+          <span>${esc(e.winner_name)} ${esc(e.winner_ev)} EV defeated ${esc(e.runner_up_name)} ${esc(e.runner_up_ev)} EV</span>
+        </div>
+        <button class="danger small-delete" data-delete-table="potus_election_archives" data-delete-id="${escAttr(e.id)}" data-delete-label="POTUS election archive">Delete</button>
       </div>
     `).join("") || `<p class="muted">No POTUS election archives yet.</p>`;
+    wireDeleteButtons();
   }
 
   function renderCongressElections(rows) {
     els.congressElectionList.innerHTML = rows.map(e => `
       <div class="item-row">
-        <strong>${esc(e.year)} — ${esc(e.title)}</strong>
-        <span>House: ${esc(e.house_control)} • Senate: ${esc(e.senate_control)} • Governors: ${esc(e.governor_control)}</span>
+        <div>
+          <strong>${esc(e.year)} — ${esc(e.title)}</strong>
+          <span>House: ${esc(e.house_control)} • Senate: ${esc(e.senate_control)} • Governors: ${esc(e.governor_control)}</span>
+        </div>
+        <button class="danger small-delete" data-delete-table="congress_election_archives" data-delete-id="${escAttr(e.id)}" data-delete-label="Congress election archive">Delete</button>
       </div>
     `).join("") || `<p class="muted">No Congress election archives yet.</p>`;
+    wireDeleteButtons();
+  }
+
+  function wireDeleteButtons() {
+    document.querySelectorAll("[data-delete-table]").forEach(btn => {
+      btn.onclick = () => deleteRecord(btn.dataset.deleteTable, btn.dataset.deleteId, btn.dataset.deleteLabel);
+    });
   }
 
   function parseJsonField(id) {
@@ -466,5 +516,9 @@
       "'": "&#39;",
       '"': "&quot;"
     }[m]));
+  }
+
+  function escAttr(s) {
+    return esc(s).replace(/`/g, "&#96;");
   }
 })();
