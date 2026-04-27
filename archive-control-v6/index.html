@@ -1,1 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>APRP Archive Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css?v=1" />
+</head>
 
+<body>
+  <div id="login-gate" class="login-gate">
+    <div class="login-card">
+      <p class="kicker">ADMIN ACCESS REQUIRED</p>
+      <h2>Archive Control Login</h2>
+      <p>Enter the access code to continue.</p>
+      <input id="login-code" type="password" placeholder="Access code" autocomplete="off" />
+      <button id="login-submit">Unlock</button>
+      <div id="login-error" class="login-error hidden">Invalid code.</div>
+    </div>
+  </div>
+
+  <main class="admin-shell">
+    <header class="topbar">
+      <div>
+        <p class="kicker">APRP ARCHIVE CONTROL</p>
+        <h1>Archive Inputs</h1>
+        <p>Basic admin inputs for presidents, economy snapshots, timeline events, and laws.</p>
+      </div>
+      <button id="refresh-data">Refresh</button>
+    </header>
+
+    <section id="error-box" class="error-box hidden"></section>
+    <section id="success-box" class="success-box hidden"></section>
+
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="presidents">Presidents</button>
+      <button class="tab-btn" data-tab="economy">Economy</button>
+      <button class="tab-btn" data-tab="timeline">Timeline</button>
+      <button class="tab-btn" data-tab="laws">Laws</button>
+    </nav>
+
+    <section id="tab-presidents" class="tab-panel active">
+      <section class="card">
+        <div class="section-head">
+          <h2>Add President</h2>
+          <button id="save-president">Save President</button>
+        </div>
+        <div class="grid">
+          <input id="pres-number" placeholder="Number">
+          <input id="pres-slug" placeholder="slug">
+          <input id="pres-name" placeholder="Full name">
+          <input id="pres-party" placeholder="Party">
+          <input id="pres-ideology" placeholder="Ideology">
+          <input id="pres-term-start" placeholder="Term start">
+          <input id="pres-term-end" placeholder="Term end">
+          <input id="pres-vp" placeholder="Vice President">
+          <input id="pres-first-lady" placeholder="First Lady / Gentleman">
+          <input id="pres-portrait" placeholder="Portrait URL">
+          <input id="pres-status" placeholder="current/former">
+          <textarea id="pres-summary" placeholder="Short summary"></textarea>
+          <textarea id="pres-full" placeholder="Full summary"></textarea>
+          <textarea id="pres-accomplishments" placeholder="Accomplishments"></textarea>
+          <textarea id="pres-scandals" placeholder="Scandals"></textarea>
+        </div>
+      </section>
+      <section class="card"><div id="president-list" class="list"></div></section>
+    </section>
+
+    <section id="tab-economy" class="tab-panel">
+      <section class="card">
+        <div class="section-head">
+          <h2>Add Economy Snapshot</h2>
+          <button id="save-economy">Save Economy</button>
+        </div>
+        <div class="grid">
+          <input id="eco-period-type" placeholder="current/monthly/yearly">
+          <input id="eco-year" placeholder="Year">
+          <input id="eco-month" placeholder="Month">
+          <input id="eco-label" placeholder="Label">
+          <input id="eco-current" placeholder="is current? true/false">
+          <input id="eco-gdp" placeholder="GDP">
+          <input id="eco-growth" placeholder="GDP Growth">
+          <input id="eco-unemployment" placeholder="Unemployment">
+          <input id="eco-inflation" placeholder="Inflation">
+          <input id="eco-debt" placeholder="Debt">
+          <input id="eco-deficit" placeholder="Deficit">
+          <textarea id="eco-summary" placeholder="Summary"></textarea>
+        </div>
+      </section>
+      <section class="card"><div id="economy-list" class="list"></div></section>
+    </section>
+
+    <section id="tab-timeline" class="tab-panel">
+      <section class="card">
+        <div class="section-head">
+          <h2>Add Timeline Event</h2>
+          <button id="save-event">Save Event</button>
+        </div>
+        <div class="grid">
+          <input id="event-title" placeholder="Title">
+          <input id="event-slug" placeholder="slug">
+          <input id="event-year" placeholder="Year">
+          <input id="event-month" placeholder="Month">
+          <input id="event-day" placeholder="Day">
+          <input id="event-date-label" placeholder="Date label">
+          <input id="event-category" placeholder="Category">
+          <input id="event-importance" placeholder="Importance">
+          <textarea id="event-summary" placeholder="Summary"></textarea>
+          <textarea id="event-body" placeholder="Body"></textarea>
+        </div>
+      </section>
+      <section class="card"><div id="event-list" class="list"></div></section>
+    </section>
+
+    <section id="tab-laws" class="tab-panel">
+      <section class="card">
+        <div class="section-head">
+          <h2>Add Law</h2>
+          <button id="save-law">Save Law</button>
+        </div>
+        <div class="grid">
+          <input id="law-title" placeholder="Title">
+          <input id="law-short" placeholder="Short title">
+          <input id="law-citation" placeholder="Citation">
+          <input id="law-author" placeholder="Author">
+          <input id="law-subject" placeholder="Subject">
+          <input id="law-funding" placeholder="Funding">
+          <input id="law-date" placeholder="Date signed">
+          <input id="law-year" placeholder="Year">
+          <input id="law-link" placeholder="Link URL">
+          <input id="law-status" placeholder="signed/vetoed/etc">
+          <textarea id="law-summary" placeholder="Summary"></textarea>
+        </div>
+      </section>
+      <section class="card"><div id="law-list" class="list"></div></section>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="../shared/config.js?v=1"></script>
+  <script src="./app.js?v=1"></script>
+</body>
+</html>
