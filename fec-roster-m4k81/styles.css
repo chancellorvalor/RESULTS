@@ -50,6 +50,14 @@ button.secondary{
   background:#334155;
 }
 
+button.danger{
+  background:#dc2626;
+}
+
+button.danger:hover{
+  filter:brightness(1.12);
+}
+
 .hidden{
   display:none!important;
 }
