@@ -1,10 +1,5 @@
 (() => {
   const cfg = window.APRP_CONFIG || {};
-  const activeSlug =
-    new URLSearchParams(window.location.search).get("slug") ||
-    cfg.defaultElectionSlug ||
-    "2008-president";
-
   const supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
 
   const els = {
@@ -50,10 +45,13 @@
     toggleLegend: document.getElementById("toggle-legend"),
     legend: document.getElementById("legend"),
 
+    mapModeCalled: document.getElementById("map-mode-called"),
+    mapModeLead: document.getElementById("map-mode-lead"),
+    mapModeTurnout: document.getElementById("map-mode-turnout"),
+
     tableHead: document.getElementById("state-table-head"),
     tableBody: document.getElementById("state-table-body"),
     search: document.getElementById("state-search"),
-    grouped: document.getElementById("grouped-state-lists"),
     ticker: document.getElementById("closest-races"),
 
     stateModal: document.getElementById("state-modal"),
@@ -91,46 +89,79 @@
     pathLeftName: document.getElementById("path-left-name"),
     pathRightName: document.getElementById("path-right-name"),
     pathLeftEv: document.getElementById("path-left-ev"),
-    pathRightEv: document.getElementById("path-right-ev")
+    pathRightEv: document.getElementById("path-right-ev"),
   };
 
   let map;
   let pathMap;
-  let popup;
   let geojson;
   let election;
   let rows = [];
-  let rowByAbbr = {};
-  let rowByName = {};
   let candidates = [];
   let leftCandidate;
   let rightCandidate;
-  let currentMapMode = "lead";
   let pathSelections = {};
+  let mapMode = "called";
 
-  const colors = {
-    unreported: "#344050",
-    locked: "#202936",
-    tossup: "#b9a76a",
-    gop: {
-      tilt: "#4b2a32",
-      lean: "#7a3038",
-      likely: "#a83843",
-      safe: "#d54852"
-    },
-    dem: {
-      tilt: "#233f58",
-      lean: "#2d5f86",
-      likely: "#287fb8",
-      safe: "#28a3ef"
-    },
-    ind: {
-      tilt: "#3d3159",
-      lean: "#5c3f82",
-      likely: "#8256b3",
-      safe: "#a568e0"
-    },
-    turnout: ["#202936", "#303b4a", "#4a596b", "#718093", "#a0adbb"]
+  const defaultColors = {
+    uncalled: "#425568",
+    tossup: "#8b8f98",
+  };
+
+  const STATE_NAME_TO_ABBR = {
+    "alabama": "AL",
+    "alaska": "AK",
+    "arizona": "AZ",
+    "arkansas": "AR",
+    "california": "CA",
+    "colorado": "CO",
+    "connecticut": "CT",
+    "delaware": "DE",
+    "district of columbia": "DC",
+    "d.c.": "DC",
+    "dc": "DC",
+    "florida": "FL",
+    "georgia": "GA",
+    "hawaii": "HI",
+    "idaho": "ID",
+    "illinois": "IL",
+    "indiana": "IN",
+    "iowa": "IA",
+    "kansas": "KS",
+    "kentucky": "KY",
+    "louisiana": "LA",
+    "maine": "ME",
+    "maryland": "MD",
+    "massachusetts": "MA",
+    "michigan": "MI",
+    "minnesota": "MN",
+    "mississippi": "MS",
+    "missouri": "MO",
+    "montana": "MT",
+    "nebraska": "NE",
+    "nevada": "NV",
+    "new hampshire": "NH",
+    "new jersey": "NJ",
+    "new mexico": "NM",
+    "new york": "NY",
+    "north carolina": "NC",
+    "north dakota": "ND",
+    "ohio": "OH",
+    "oklahoma": "OK",
+    "oregon": "OR",
+    "pennsylvania": "PA",
+    "rhode island": "RI",
+    "south carolina": "SC",
+    "south dakota": "SD",
+    "tennessee": "TN",
+    "texas": "TX",
+    "utah": "UT",
+    "vermont": "VT",
+    "virginia": "VA",
+    "washington": "WA",
+    "west virginia": "WV",
+    "wisconsin": "WI",
+    "wyoming": "WY",
   };
 
   document.addEventListener("DOMContentLoaded", init);
@@ -138,6 +169,7 @@
   async function init() {
     try {
       wireButtons();
+      setMapMode("called", false);
       initMap();
       await loadGeoJson();
       await loadAndRender();
@@ -152,39 +184,70 @@
   }
 
   function wireButtons() {
-    document.querySelectorAll(".map-mode-btn").forEach(btn => {
-      btn.onclick = () => {
-        currentMapMode = btn.dataset.mode;
-        document.querySelectorAll(".map-mode-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        drawMainMap();
-        renderLegend();
-      };
-    });
-
     if (els.resetMap) {
-      els.resetMap.onclick = () => map?.flyTo({ center: [-98.5795, 39.8283], zoom: 3.45 });
+      els.resetMap.onclick = () => {
+        map?.flyTo({ center: [-98.5795, 39.8283], zoom: 3.45 });
+      };
     }
 
     if (els.toggleLegend) {
-      els.toggleLegend.onclick = () => els.legend?.classList.toggle("hidden");
+      els.toggleLegend.onclick = () => {
+        els.legend?.classList.toggle("hidden");
+      };
+    }
+
+    if (els.mapModeCalled) {
+      els.mapModeCalled.onclick = () => setMapMode("called");
+    }
+
+    if (els.mapModeLead) {
+      els.mapModeLead.onclick = () => setMapMode("lead");
+    }
+
+    if (els.mapModeTurnout) {
+      els.mapModeTurnout.onclick = () => setMapMode("turnout");
     }
 
     if (els.search) {
-      els.search.oninput = () => {
-        renderTable();
-        renderGroupedStates();
-      };
+      els.search.oninput = () => renderTable();
     }
 
     if (els.modalClose) els.modalClose.onclick = closeStateModal;
     if (els.modalCloseBackdrop) els.modalCloseBackdrop.onclick = closeStateModal;
+
     if (els.pathButton) els.pathButton.onclick = openPathModal;
     if (els.pathClose) els.pathClose.onclick = closePathModal;
     if (els.pathCloseBackdrop) els.pathCloseBackdrop.onclick = closePathModal;
   }
 
+  function setMapMode(mode, redraw = true) {
+    mapMode = mode;
+
+    [els.mapModeCalled, els.mapModeLead, els.mapModeTurnout].forEach(btn => {
+      if (btn) btn.classList.remove("active-map-mode");
+    });
+
+    if (mode === "called" && els.mapModeCalled) {
+      els.mapModeCalled.classList.add("active-map-mode");
+    }
+
+    if (mode === "lead" && els.mapModeLead) {
+      els.mapModeLead.classList.add("active-map-mode");
+    }
+
+    if (mode === "turnout" && els.mapModeTurnout) {
+      els.mapModeTurnout.classList.add("active-map-mode");
+    }
+
+    if (redraw) {
+      drawMainMap();
+      renderLegend();
+    }
+  }
+
   function initMap() {
+    if (!document.getElementById("map")) return;
+
     map = new maplibregl.Map({
       container: "map",
       style: {
@@ -194,31 +257,24 @@
             type: "raster",
             tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
             tileSize: 256,
-            attribution: "© OpenStreetMap contributors"
-          }
+            attribution: "© OpenStreetMap contributors",
+          },
         },
-        layers: [{ id: "osm", type: "raster", source: "osm" }]
+        layers: [{ id: "osm", type: "raster", source: "osm" }],
       },
       center: [-98.5795, 39.8283],
-      zoom: 3.45
+      zoom: 3.45,
     });
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 
     map.on("load", () => {
-      popup = new maplibregl.Popup({
-        closeButton: false,
-        closeOnClick: false,
-        offset: 14,
-        maxWidth: "420px"
-      });
-
       if (geojson) drawMainMap();
     });
   }
 
   async function loadGeoJson() {
-    const res = await fetch("./data/states.geojson?v=12000");
+    const res = await fetch("./data/states.geojson");
     if (!res.ok) throw new Error("Could not load states.geojson");
     geojson = await res.json();
   }
@@ -230,7 +286,7 @@
       const { data: electionData, error: electionError } = await supabase
         .from("elections")
         .select("*")
-        .eq("slug", activeSlug)
+        .eq("slug", cfg.defaultElectionSlug)
         .single();
 
       if (electionError) throw electionError;
@@ -238,23 +294,32 @@
       election = electionData;
       candidates = normalizeCandidates(election.candidates);
 
-      leftCandidate = findCandidate("dem") || candidates[1] || candidates[0];
-      rightCandidate = findCandidate("gop") || candidates[0];
+      leftCandidate =
+        findCandidate("dem") ||
+        findCandidate("dnc") ||
+        candidates[1] ||
+        candidates[0];
+
+      rightCandidate =
+        findCandidate("gop") ||
+        candidates[0];
 
       const { data: resultRows, error: resultsError } = await supabase
         .from("state_results")
         .select("*")
         .eq("election_id", election.id)
-        .order("poll_close_order", { ascending: true })
-        .order("state_name", { ascending: true });
+        .order("state_name");
 
       if (resultsError) throw resultsError;
 
       rows = (resultRows || []).map(calculateRow);
-      buildIndexes();
+
       renderAll();
     } catch (err) {
-      showError("Could not load live results. " + (err.message || err));
+      showError(
+        "Could not load live results. Check shared/config.js, Supabase setup, and whether the schema was run. " +
+          (err.message || err)
+      );
     } finally {
       if (els.loader) els.loader.style.display = "none";
     }
@@ -269,123 +334,127 @@
       parsed = [];
     }
 
-    if (!parsed.length) {
-      parsed = [
-        { id: "gop", party: "GOP", name: "Republican Candidate", shortName: "GOP", color: "#d54852", image: "" },
-        { id: "dem", party: "DNC", name: "Democratic Candidate", shortName: "DNC", color: "#28a3ef", image: "" },
-        { id: "ind", party: "IND", name: "Independent", shortName: "IND", color: "#a568e0", image: "" }
-      ];
-    }
+    const base = parsed.length
+      ? parsed
+      : [
+          {
+            id: "dem",
+            party: "DNC",
+            name: "Democratic Candidate",
+            shortName: "DNC",
+            color: "#3498db",
+            image: "",
+          },
+          {
+            id: "gop",
+            party: "GOP",
+            name: "Republican Candidate",
+            shortName: "GOP",
+            color: "#e74c3c",
+            image: "",
+          },
+          {
+            id: "ind",
+            party: "IND",
+            name: "Independent",
+            shortName: "IND",
+            color: "#9b59b6",
+            image: "",
+          },
+        ];
 
-    return parsed.map(c => {
-      const id = normalizeCandidateId(c.id || c.party) || "ind";
+    return base.map(c => {
+      const id = normalizePartyId(c.id || c.party || "");
+
       return {
         id,
         party: c.party || id.toUpperCase(),
         name: c.name || c.party || id.toUpperCase(),
         shortName: c.shortName || c.party || c.name || id.toUpperCase(),
-        color: c.color || fallbackCandidateColor(id),
-        image: c.image || ""
+        color: c.color || defaultCandidateColor(id),
+        image: c.image || "",
       };
     });
   }
 
-  function normalizeCandidateId(id) {
-    const x = String(id || "").trim().toLowerCase();
+  function normalizePartyId(id) {
+    const v = String(id || "").trim().toLowerCase();
 
-    if (!x) return "";
-    if (["dem", "dnc", "democrat", "democratic"].includes(x)) return "dem";
-    if (["gop", "rep", "republican", "rnc"].includes(x)) return "gop";
-    if (["ind", "independent", "other"].includes(x)) return "ind";
+    if (v === "dnc" || v === "democrat" || v === "democratic") return "dem";
+    if (v === "republican" || v === "rep") return "gop";
+    if (v === "independent" || v === "other") return "ind";
 
-    return x;
+    return v || "ind";
   }
 
-  function fallbackCandidateColor(id) {
-    if (id === "dem") return "#28a3ef";
-    if (id === "gop") return "#d54852";
-    if (id === "ind") return "#a568e0";
+  function defaultCandidateColor(id) {
+    if (id === "dem") return "#3498db";
+    if (id === "gop") return "#e74c3c";
+    if (id === "ind") return "#9b59b6";
     return "#64748b";
   }
 
   function findCandidate(id) {
-    const normalized = normalizeCandidateId(id);
-    return candidates.find(c => c.id === normalized);
+    const norm = normalizePartyId(id);
+    return candidates.find(c => c.id === norm);
   }
 
   function calculateRow(r) {
+    const abbr = normalizeAbbr(r.abbr || r.state_abbr || r.state_code || r.state_name);
+
     const turnout = Number(r.total_turnout || 0);
-    const reportingPct = clamp(Number(r.turnout_pct || 0), 0, 100);
+    const reportingPct = Number(r.turnout_pct || 0);
     const counted = Math.round((turnout * reportingPct) / 100);
 
-    const demPct = clamp(Number(r.dem_pct || 0), 0, 100);
-    const gopPct = clamp(Number(r.gop_pct || 0), 0, 100);
-    const indPct = clamp(Number(r.ind_pct || 0), 0, 100);
-
     const votes = {
-      dem: Math.round((counted * demPct) / 100),
-      gop: Math.round((counted * gopPct) / 100),
-      ind: Math.round((counted * indPct) / 100)
+      gop: Math.round((counted * Number(r.gop_pct || 0)) / 100),
+      dem: Math.round((counted * Number(r.dem_pct || r.dnc_pct || 0)) / 100),
+      ind: Math.round((counted * Number(r.ind_pct || 0)) / 100),
     };
 
     const sorted = Object.entries(votes).sort((a, b) => b[1] - a[1]);
-    const leader = sorted[0]?.[0] || "";
+    const leader = sorted[0]?.[0] || "gop";
     const leaderVotes = sorted[0]?.[1] || 0;
     const secondVotes = sorted[1]?.[1] || 0;
-    const totalVotes = votes.dem + votes.gop + votes.ind;
+    const totalVotes = votes.gop + votes.dem + votes.ind;
     const voteLead = Math.max(0, leaderVotes - secondVotes);
     const marginPct = totalVotes ? (voteLead / totalVotes) * 100 : 0;
 
-    const calledParty = normalizeCandidateId(r.called_party);
+    const manualCall = normalizePartyId(r.called_party || "");
+    const calledParty = manualCall && manualCall !== "independent"
+      ? manualCall
+      : "";
 
     return {
       ...r,
-      abbr: normalizeAbbr(r.abbr),
-      state_name: String(r.state_name || "").trim(),
-      electoral_votes: Number(r.electoral_votes || 0),
-      total_turnout: turnout,
-      turnout_pct: reportingPct,
-      dem_pct: demPct,
-      gop_pct: gopPct,
-      ind_pct: indPct,
+      abbr,
+      state_name: r.state_name || r.name || abbr,
       counted_votes: counted,
       votes,
       leader,
       leader_votes: leaderVotes,
       second_votes: secondVotes,
-      total_votes: totalVotes,
       vote_lead: voteLead,
-      margin_pct: marginPct,
       called_party: calledParty,
+      margin_pct: marginPct,
+      total_votes: totalVotes,
       status: totalVotes ? statusFromMargin(marginPct) : "Unreported",
-      is_poll_closed: r.is_poll_closed !== false,
-      poll_close_time: r.poll_close_time || "",
-      first_results_time: r.first_results_time || "",
-      poll_close_order: Number(r.poll_close_order || 0)
     };
   }
 
   function statusFromMargin(margin) {
-    if (margin < 1) return "Tossup";
+    if (margin < 1) return "TCTC";
     if (margin < 3) return "Tilt";
     if (margin < 7) return "Lean";
     if (margin < 12) return "Likely";
     return "Safe";
   }
 
-  function buildIndexes() {
-    rowByAbbr = {};
-    rowByName = {};
-
-    rows.forEach(r => {
-      rowByAbbr[normalizeAbbr(r.abbr)] = r;
-      rowByName[normalizeName(r.state_name)] = r;
-    });
-  }
-
   function renderAll() {
-    if (els.title) els.title.textContent = election.title || "Election Results";
-    if (els.subtitle) els.subtitle.textContent = election.subtitle || "Live map";
+    if (!election) return;
+
+    setText(els.title, election.title || "Election Results");
+    setText(els.subtitle, election.subtitle || "Live map");
 
     if (els.year) {
       els.year.textContent = election.year || "";
@@ -398,14 +467,18 @@
     renderLegend();
     renderTicker();
     renderTable();
-    renderGroupedStates();
     drawMainMap();
 
-    if (els.lastUpdated) els.lastUpdated.textContent = "Updated " + new Date().toLocaleTimeString();
+    setText(els.lastUpdated, "Updated " + new Date().toLocaleTimeString());
   }
 
   function totals() {
-    const t = { ev: {}, pv: {}, counted: 0, expected: 0 };
+    const t = {
+      ev: {},
+      pv: {},
+      counted: 0,
+      expected: 0,
+    };
 
     candidates.forEach(c => {
       t.ev[c.id] = 0;
@@ -413,7 +486,7 @@
     });
 
     rows.forEach(r => {
-      t.counted += r.counted_votes;
+      t.counted += Number(r.counted_votes || 0);
       t.expected += Number(r.total_turnout || 0);
 
       candidates.forEach(c => {
@@ -429,6 +502,8 @@
   }
 
   function renderScoreboard() {
+    if (!leftCandidate || !rightCandidate) return;
+
     const t = totals();
     const totalEv = Number(election.total_electoral_votes || 538);
     const winThreshold = Number(election.win_threshold || 270);
@@ -438,8 +513,8 @@
     setCandidateTop("left", leftCandidate, t, totalPv);
     setCandidateTop("right", rightCandidate, t, totalPv);
 
-    if (els.leftShort) els.leftShort.textContent = leftCandidate.shortName || leftCandidate.party;
-    if (els.rightShort) els.rightShort.textContent = rightCandidate.shortName || rightCandidate.party;
+    setText(els.leftShort, leftCandidate.shortName || leftCandidate.party);
+    setText(els.rightShort, rightCandidate.shortName || rightCandidate.party);
 
     if (els.evFillLeft) {
       els.evFillLeft.style.background = leftCandidate.color;
@@ -451,14 +526,17 @@
       els.evFillRight.style.width = `${pct(t.ev[rightCandidate.id], totalEv)}%`;
     }
 
-    if (els.evThreshold) els.evThreshold.style.left = `${pct(winThreshold, totalEv)}%`;
-    if (els.evLeftLabel) els.evLeftLabel.textContent = t.ev[leftCandidate.id] || 0;
-    if (els.evRightLabel) els.evRightLabel.textContent = t.ev[rightCandidate.id] || 0;
-    if (els.toWinLabel) els.toWinLabel.textContent = `${winThreshold} TO WIN`;
-    if (els.totalEvLabel) els.totalEvLabel.textContent = totalEv;
+    if (els.evThreshold) {
+      els.evThreshold.style.left = `${pct(winThreshold, totalEv)}%`;
+    }
 
-    if (els.popularLeftLabel) els.popularLeftLabel.textContent = leftCandidate.party;
-    if (els.popularRightLabel) els.popularRightLabel.textContent = rightCandidate.party;
+    setText(els.evLeftLabel, t.ev[leftCandidate.id] || 0);
+    setText(els.evRightLabel, t.ev[rightCandidate.id] || 0);
+    setText(els.toWinLabel, `${winThreshold} TO WIN`);
+    setText(els.totalEvLabel, totalEv);
+
+    setText(els.popularLeftLabel, leftCandidate.party);
+    setText(els.popularRightLabel, rightCandidate.party);
 
     if (els.popularFillLeft) {
       els.popularFillLeft.style.background = leftCandidate.color;
@@ -470,13 +548,13 @@
       els.popularFillRight.style.width = `${pct(t.pv[rightCandidate.id], totalPv)}%`;
     }
 
-    if (els.nationalReporting) els.nationalReporting.textContent = `Estimated reporting: ${reporting.toFixed(1)}%`;
+    setText(els.nationalReporting, `Estimated reporting: ${reporting.toFixed(1)}%`);
 
     const winner = candidates.find(c => (t.ev[c.id] || 0) >= winThreshold);
 
     if (winner) {
       els.winnerCard?.classList.remove("hidden");
-      if (els.winnerName) els.winnerName.textContent = winner.name;
+      setText(els.winnerName, winner.name);
     } else {
       els.winnerCard?.classList.add("hidden");
     }
@@ -492,69 +570,71 @@
     if (photo) {
       photo.src = c.image || "";
       photo.style.display = c.image ? "block" : "none";
-      photo.onerror = () => (photo.style.display = "none");
+      photo.onerror = () => {
+        photo.style.display = "none";
+      };
     }
 
-    if (party) {
-      party.textContent = c.party;
-      party.style.color = c.color;
-    }
+    setText(party, c.party);
+    if (party) party.style.color = c.color;
 
-    if (name) name.textContent = c.name;
+    setText(name, c.name);
 
-    if (ev) {
-      ev.textContent = `${t.ev[c.id] || 0} EV`;
-      ev.style.color = c.color;
-    }
+    setText(ev, `${t.ev[c.id] || 0} EV`);
+    if (ev) ev.style.color = c.color;
 
-    if (votes) {
-      votes.textContent = `${(t.pv[c.id] || 0).toLocaleString()} votes • ${pct(t.pv[c.id], totalPv).toFixed(1)}%`;
-    }
+    setText(
+      votes,
+      `${(t.pv[c.id] || 0).toLocaleString()} votes • ${pct(t.pv[c.id], totalPv).toFixed(1)}%`
+    );
   }
 
   function renderLegend() {
     if (!els.legend) return;
 
-    if (currentMapMode === "called") {
+    if (mapMode === "turnout") {
       els.legend.innerHTML = `
-        <div class="legend-item"><span class="legend-swatch" style="background:${findCandidate("gop")?.color || colors.gop.safe}"></span> GOP called</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${findCandidate("dem")?.color || colors.dem.safe}"></span> DNC called</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${findCandidate("ind")?.color || colors.ind.safe}"></span> IND called</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${colors.unreported}"></span> Uncalled</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${colors.locked}"></span> Polls not closed</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#94a3b8"></span>Low reporting</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#64748b"></span>25%+</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#374151"></span>50%+</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#1f2937"></span>75%+</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#111827"></span>95%+</div>
       `;
       return;
     }
 
-    if (currentMapMode === "lead") {
+    if (mapMode === "lead") {
       els.legend.innerHTML = `
-        <div class="legend-item"><span class="legend-swatch" style="background:${colors.dem.safe}"></span> DNC safe</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${colors.dem.likely}"></span> DNC likely</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${colors.dem.lean}"></span> DNC lean</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${colors.dem.tilt}"></span> DNC tilt</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${colors.tossup}"></span> Tossup</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${colors.gop.tilt}"></span> GOP tilt</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${colors.gop.lean}"></span> GOP lean</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${colors.gop.likely}"></span> GOP likely</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:${colors.gop.safe}"></span> GOP safe</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#8b8f98"></span>TCTC</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#1e3a8a"></span>Tilt/Lean DNC</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#38bdf8"></span>Likely/Safe DNC</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#7f1d1d"></span>Tilt/Lean GOP</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#dc2626"></span>Likely/Safe GOP</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#9333ea"></span>IND Lead</div>
       `;
       return;
     }
 
-    els.legend.innerHTML = `
-      <div class="legend-item"><span class="legend-swatch" style="background:${colors.turnout[0]}"></span> 0–24% reporting</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:${colors.turnout[1]}"></span> 25–49% reporting</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:${colors.turnout[2]}"></span> 50–74% reporting</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:${colors.turnout[3]}"></span> 75–94% reporting</div>
-      <div class="legend-item"><span class="legend-swatch" style="background:${colors.turnout[4]}"></span> 95–100% reporting</div>
-    `;
+    els.legend.innerHTML =
+      candidates.map(c => `
+        <div class="legend-item">
+          <span class="legend-swatch" style="background:${c.color}"></span>
+          ${esc(c.party)}
+        </div>
+      `).join("") +
+      `
+        <div class="legend-item">
+          <span class="legend-swatch" style="background:${defaultColors.uncalled}"></span>
+          Uncalled / Unreported
+        </div>
+      `;
   }
 
   function renderTicker() {
     if (!els.ticker) return;
 
     const closest = rows
-      .filter(r => r.total_votes > 0 && r.is_poll_closed)
+      .filter(r => r.total_votes > 0)
       .sort((a, b) => a.margin_pct - b.margin_pct)
       .slice(0, 10);
 
@@ -582,11 +662,8 @@
       <tr>
         <th>State</th>
         <th>EV</th>
-        <th>Close</th>
         <th>Reporting</th>
-        <th>DNC</th>
-        <th>GOP</th>
-        <th>IND</th>
+        ${candidates.map(c => `<th>${esc(c.party)}</th>`).join("")}
         <th>Leader</th>
         <th>Status</th>
         <th>Lead</th>
@@ -595,19 +672,20 @@
 
     els.tableBody.innerHTML = rows
       .filter(r => !q || r.state_name.toLowerCase().includes(q) || r.abbr.toLowerCase().includes(q))
-      .sort((a, b) => a.poll_close_order - b.poll_close_order || a.state_name.localeCompare(b.state_name))
       .map(r => {
         const lead = findCandidate(r.leader) || candidates[0];
 
         return `
           <tr data-abbr="${escAttr(r.abbr)}">
             <td><strong>${esc(r.state_name)}</strong></td>
-            <td>${r.electoral_votes}</td>
-            <td>${esc(r.poll_close_time || "—")}</td>
-            <td>${r.is_poll_closed ? `${r.turnout_pct.toFixed(1)}%` : "Polls open"}</td>
-            <td>${r.dem_pct.toFixed(1)}%</td>
-            <td>${r.gop_pct.toFixed(1)}%</td>
-            <td>${r.ind_pct.toFixed(1)}%</td>
+            <td>${esc(r.electoral_votes)}</td>
+            <td>${Number(r.turnout_pct || 0).toFixed(1)}%</td>
+            ${candidates.map(c => `
+              <td>
+                ${(r.votes[c.id] || 0).toLocaleString()}<br>
+                <small>${Number(getPctForCandidate(r, c.id) || 0).toFixed(1)}%</small>
+              </td>
+            `).join("")}
             <td><span class="party-pill" style="background:${lead.color}22;color:${lead.color}">${esc(lead.party)}</span></td>
             <td>${esc(r.status)}</td>
             <td>${r.vote_lead.toLocaleString()}</td>
@@ -621,94 +699,25 @@
     });
   }
 
-  function renderGroupedStates() {
-    if (!els.grouped) return;
-
-    const q = (els.search?.value || "").trim().toLowerCase();
-    const filtered = rows.filter(r => !q || r.state_name.toLowerCase().includes(q) || r.abbr.toLowerCase().includes(q));
-
-    const groups = {
-      "Solid Democrat": [],
-      "Lean Democrat": [],
-      "Competitive": [],
-      "Lean Republican": [],
-      "Solid Republican": []
-    };
-
-    filtered.forEach(r => {
-      if (!r.total_votes || !r.is_poll_closed) {
-        groups["Competitive"].push(r);
-        return;
-      }
-
-      if (r.leader === "dem" && r.status === "Safe") groups["Solid Democrat"].push(r);
-      else if (r.leader === "dem") groups["Lean Democrat"].push(r);
-      else if (r.leader === "gop" && r.status === "Safe") groups["Solid Republican"].push(r);
-      else if (r.leader === "gop") groups["Lean Republican"].push(r);
-      else groups["Competitive"].push(r);
-    });
-
-    Object.values(groups).forEach(list => {
-      list.sort((a, b) => a.poll_close_order - b.poll_close_order || a.state_name.localeCompare(b.state_name));
-    });
-
-    els.grouped.innerHTML = `
-      <div class="state-groups">
-        ${Object.entries(groups).map(([title, list]) => stateGroupHtml(title, list)).join("")}
-      </div>
-    `;
-  }
-
-  function stateGroupHtml(title, list) {
-    return `
-      <div class="state-group-card">
-        <h3>${esc(title)}</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>State</th>
-              <th>DEM</th>
-              <th>GOP</th>
-              <th>% EXP.</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${
-              list.length
-                ? list.map(r => `
-                    <tr onclick="window.__openStateResult('${escAttr(r.abbr)}')">
-                      <td>${esc(r.state_name)}</td>
-                      <td class="blue-cell">${r.dem_pct.toFixed(0)}%</td>
-                      <td class="red-cell">${r.gop_pct.toFixed(0)}%</td>
-                      <td>${r.is_poll_closed ? r.turnout_pct.toFixed(0) + "%" : "Open"}</td>
-                    </tr>
-                  `).join("")
-                : `<tr><td colspan="4" class="empty-cell">No states</td></tr>`
-            }
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-
   function drawMainMap() {
     if (!map?.loaded() || !geojson) return;
 
     const data = JSON.parse(JSON.stringify(geojson));
 
-    data.features = (data.features || []).filter(f => normalizeAbbr(getFeatureAbbr(f)) !== "PR").map(f => {
-      const row = findRowForFeature(f);
-      const abbr = normalizeAbbr(getFeatureAbbr(f));
-      const stateName = getFeatureName(f);
+    data.features = data.features
+      .filter(f => normalizeAbbrFromFeature(f) !== "PR")
+      .map(f => {
+        const abbr = normalizeAbbrFromFeature(f);
+        const r = rowByAbbr(abbr);
 
-      f.properties = f.properties || {};
-      f.properties.aprp_abbr = abbr;
-      f.properties.aprp_state_name = stateName;
-      f.properties.fill = row ? colorForRow(row) : colors.unreported;
-      f.properties.hoverHtml = mapPopupHtml(row, abbr, stateName);
+        f.properties.abbr = abbr;
+        f.properties.fill = r ? colorForRow(r) : defaultColors.uncalled;
+        f.properties.label = r
+          ? `${r.state_name}: ${r.status} ${candidateName(r.leader)}`
+          : f.properties.NAME || f.properties.name || abbr;
 
-      return f;
-    });
+        return f;
+      });
 
     if (map.getSource("states")) {
       map.getSource("states").setData(data);
@@ -723,8 +732,8 @@
       source: "states",
       paint: {
         "fill-color": ["get", "fill"],
-        "fill-opacity": 0.92
-      }
+        "fill-opacity": 0.9,
+      },
     });
 
     map.addLayer({
@@ -732,88 +741,117 @@
       type: "line",
       source: "states",
       paint: {
-        "line-color": "#f4f7fb",
-        "line-width": 1.08,
-        "line-opacity": 0.88
-      }
+        "line-color": "#ffffff",
+        "line-width": 1,
+        "line-opacity": 0.84,
+      },
+    });
+
+    const popup = new maplibregl.Popup({
+      closeButton: false,
+      offset: 16,
+      className: "state-hover-popup",
     });
 
     map.on("mousemove", "states-fill", e => {
       map.getCanvas().style.cursor = "pointer";
-      const feature = e.features?.[0];
-      if (!feature) return;
 
-      popup.setLngLat(e.lngLat).setHTML(feature.properties.hoverHtml || "").addTo(map);
+      const abbr = e.features[0].properties.abbr;
+      const r = rowByAbbr(abbr);
+
+      popup
+        .setLngLat(e.lngLat)
+        .setHTML(mapPopupHtml(r, abbr))
+        .addTo(map);
     });
 
     map.on("mouseleave", "states-fill", () => {
       map.getCanvas().style.cursor = "";
-      popup?.remove();
+      popup.remove();
     });
 
     map.on("click", "states-fill", e => {
-      const abbr = e.features?.[0]?.properties?.aprp_abbr;
-      if (abbr) openStateModal(abbr);
+      openStateModal(e.features[0].properties.abbr);
     });
   }
 
   function colorForRow(r) {
-    if (!r) return colors.unreported;
-
-    if (!r.is_poll_closed) return colors.locked;
-
-    if (currentMapMode === "called") {
-      if (!r.called_party) return colors.unreported;
-      return findCandidate(r.called_party)?.color || colors.unreported;
+    if (!r || !r.total_votes) {
+      return defaultColors.uncalled;
     }
 
-    if (currentMapMode === "turnout") {
-      const x = Number(r.turnout_pct || 0);
-      if (x >= 95) return colors.turnout[4];
-      if (x >= 75) return colors.turnout[3];
-      if (x >= 50) return colors.turnout[2];
-      if (x >= 25) return colors.turnout[1];
-      return colors.turnout[0];
+    if (mapMode === "turnout") {
+      return turnoutColor(r);
     }
 
-    if (!r.total_votes) return colors.unreported;
+    if (mapMode === "lead") {
+      return leadStrengthColor(r);
+    }
 
-    if (r.status === "Tossup") return colors.tossup;
-
-    const leader = r.leader;
-    const bucket = statusBucket(r.status);
-
-    return colors[leader]?.[bucket] || colors.unreported;
+    const c = findCandidate(r.called_party || r.leader);
+    return c?.color || defaultColors.tossup;
   }
 
-  function statusBucket(status) {
-    if (status === "Safe") return "safe";
-    if (status === "Likely") return "likely";
-    if (status === "Lean") return "lean";
-    return "tilt";
+  function turnoutColor(r) {
+    const turnout = Number(r.turnout_pct || 0);
+
+    if (turnout >= 95) return "#111827";
+    if (turnout >= 75) return "#1f2937";
+    if (turnout >= 50) return "#374151";
+    if (turnout >= 25) return "#64748b";
+    if (turnout > 0) return "#94a3b8";
+
+    return defaultColors.uncalled;
   }
 
-  function mapPopupHtml(r, abbr = "", fallbackStateName = "") {
+  function leadStrengthColor(r) {
+    const margin = Number(r.margin_pct || 0);
+
+    if (margin < 1) return "#8b8f98";
+
+    if (r.leader === "gop") {
+      if (margin < 3) return "#7f1d1d";
+      if (margin < 7) return "#991b1b";
+      if (margin < 12) return "#b91c1c";
+      return "#dc2626";
+    }
+
+    if (r.leader === "dem") {
+      if (margin < 3) return "#1e3a8a";
+      if (margin < 7) return "#1d4ed8";
+      if (margin < 12) return "#2563eb";
+      return "#38bdf8";
+    }
+
+    if (r.leader === "ind") {
+      if (margin < 3) return "#581c87";
+      if (margin < 7) return "#7e22ce";
+      if (margin < 12) return "#9333ea";
+      return "#a855f7";
+    }
+
+    return defaultColors.tossup;
+  }
+
+  function mapPopupHtml(r, abbr) {
     if (!r) {
       return `
-        <div class="map-popup">
-          <h3>${esc(fallbackStateName || abbr || "State")}</h3>
+        <div class="map-popup rich-popup">
+          <h3>${esc(abbr || "State")}</h3>
           <p>No state result found.</p>
         </div>
       `;
     }
 
-    const candidateRows = [
-      { id: "gop", c: findCandidate("gop"), votes: r.votes.gop, pct: r.gop_pct },
-      { id: "dem", c: findCandidate("dem"), votes: r.votes.dem, pct: r.dem_pct },
-      { id: "ind", c: findCandidate("ind"), votes: r.votes.ind, pct: r.ind_pct }
-    ].filter(x => x.c).sort((a, b) => b.votes - a.votes);
+    const gop = findCandidate("gop") || { name: "GOP", party: "GOP", color: "#e74c3c" };
+    const dem = findCandidate("dem") || { name: "DNC", party: "DNC", color: "#3498db" };
+    const ind = findCandidate("ind") || { name: "Independent", party: "IND", color: "#9b59b6" };
 
     return `
-      <div class="map-popup">
+      <div class="map-popup rich-popup">
         <h3>${esc(r.state_name)}</h3>
-        <div class="popup-sub">${r.electoral_votes} electoral votes</div>
-        <div class="popup-tag ${r.called_party ? "called" : "live"}">${r.called_party ? "CALLED" : "LIVE"}</div>
+        <h4>${esc(r.electoral_votes || 0)} electoral votes</h4>
+
         <table>
           <thead>
             <tr>
@@ -824,61 +862,77 @@
             </tr>
           </thead>
           <tbody>
-            ${candidateRows.map(x => `
-              <tr>
-                <td style="color:${x.c.color};font-weight:900;">${esc(x.c.name)}</td>
-                <td>${esc(x.c.party)}</td>
-                <td>${x.votes.toLocaleString()}</td>
-                <td>${x.pct.toFixed(1)}%</td>
-              </tr>
-            `).join("")}
+            ${popupCandidateRow(dem, r)}
+            ${popupCandidateRow(gop, r)}
+            ${popupCandidateRow(ind, r)}
           </tbody>
         </table>
-        <div class="popup-foot">
-          ${r.is_poll_closed ? `${r.turnout_pct.toFixed(1)}% reporting • ${r.counted_votes.toLocaleString()} counted votes` : `Polls close ${esc(r.poll_close_time || "later")}`}
-        </div>
+
+        <p class="popup-foot">
+          ${Number(r.turnout_pct || 0).toFixed(1)}% reporting • ${r.counted_votes.toLocaleString()} counted votes
+        </p>
       </div>
     `;
   }
 
+  function popupCandidateRow(c, r) {
+    const votes = r.votes[c.id] || 0;
+    const pctValue = getPctForCandidate(r, c.id);
+
+    return `
+      <tr>
+        <td style="color:${c.color};font-weight:1000;">${esc(c.name)}</td>
+        <td>${esc(c.party)}</td>
+        <td>${votes.toLocaleString()}</td>
+        <td>${Number(pctValue || 0).toFixed(1)}%</td>
+      </tr>
+    `;
+  }
+
   function openStateModal(abbr) {
-    const r = rowByAbbr[normalizeAbbr(abbr)];
-    if (!r) return;
+    const r = rowByAbbr(abbr);
+    if (!r || !leftCandidate || !rightCandidate) return;
 
     const leftVotes = r.votes[leftCandidate.id] || 0;
     const rightVotes = r.votes[rightCandidate.id] || 0;
-    const leftPct = Number(r[leftCandidate.id + "_pct"] || 0);
-    const rightPct = Number(r[rightCandidate.id + "_pct"] || 0);
+    const leftPct = getPctForCandidate(r, leftCandidate.id);
+    const rightPct = getPctForCandidate(r, rightCandidate.id);
     const leader = findCandidate(r.leader) || candidates[0];
 
-    els.modalStateKicker.textContent = r.called_party ? "CALLED STATE" : "LIVE STATE RESULT";
-    els.modalStateTitle.textContent = r.state_name;
-    els.modalStateMeta.textContent = `${r.electoral_votes} EV • ${r.is_poll_closed ? `${r.turnout_pct.toFixed(1)}% reporting` : `Polls close ${r.poll_close_time || "later"}`}`;
-    els.modalStatusPill.textContent = r.status;
-    els.modalStatusText.textContent = r.status;
+    setText(els.modalStateKicker, r.called_party ? "CALLED STATE" : "LIVE STATE RESULT");
+    setText(els.modalStateTitle, r.state_name);
+    setText(els.modalStateMeta, `${r.electoral_votes} EV • ${Number(r.turnout_pct || 0).toFixed(1)}% reporting`);
+    setText(els.modalStatusPill, r.status);
+    setText(els.modalStatusText, r.status);
 
     setModalCandidate("left", leftCandidate, leftPct, leftVotes);
     setModalCandidate("right", rightCandidate, rightPct, rightVotes);
 
-    els.modalBarLeft.style.background = leftCandidate.color;
-    els.modalBarRight.style.background = rightCandidate.color;
-    els.modalBarLeft.style.width = `${leftPct}%`;
-    els.modalBarRight.style.width = `${rightPct}%`;
-
-    els.modalCountedVotes.textContent = r.counted_votes.toLocaleString();
-    els.modalLeaderName.textContent = leader ? leader.name : "—";
-    els.modalLeaderName.style.color = leader ? leader.color : "#fff";
-    els.modalLeadMargin.textContent = `${r.margin_pct.toFixed(2)}% / ${r.vote_lead.toLocaleString()} votes`;
-
-    const ind = findCandidate("ind");
-    if (ind && r.votes.ind > 0) {
-      els.modalThirdCandidate.classList.remove("hidden");
-      els.modalThirdCandidate.innerHTML = `${esc(ind.name)}: ${r.ind_pct.toFixed(1)}% / ${r.votes.ind.toLocaleString()} votes`;
-    } else {
-      els.modalThirdCandidate.classList.add("hidden");
+    if (els.modalBarLeft) {
+      els.modalBarLeft.style.background = leftCandidate.color;
+      els.modalBarLeft.style.width = `${leftPct}%`;
     }
 
-    els.stateModal.classList.remove("hidden");
+    if (els.modalBarRight) {
+      els.modalBarRight.style.background = rightCandidate.color;
+      els.modalBarRight.style.width = `${rightPct}%`;
+    }
+
+    setText(els.modalCountedVotes, r.counted_votes.toLocaleString());
+    setText(els.modalLeaderName, leader.name);
+    if (els.modalLeaderName) els.modalLeaderName.style.color = leader.color;
+    setText(els.modalLeadMargin, `${r.margin_pct.toFixed(2)}% / ${r.vote_lead.toLocaleString()} votes`);
+
+    const ind = findCandidate("ind");
+
+    if (ind && (r.votes.ind || 0) > 0 && els.modalThirdCandidate) {
+      els.modalThirdCandidate.classList.remove("hidden");
+      els.modalThirdCandidate.innerHTML = `${esc(ind.name)}: ${Number(r.ind_pct || 0).toFixed(1)}% / ${(r.votes.ind || 0).toLocaleString()} votes`;
+    } else {
+      els.modalThirdCandidate?.classList.add("hidden");
+    }
+
+    els.stateModal?.classList.remove("hidden");
   }
 
   function setModalCandidate(side, c, candidatePct, candidateVotes) {
@@ -888,26 +942,34 @@
     const pctEl = side === "left" ? els.modalLeftPct : els.modalRightPct;
     const votes = side === "left" ? els.modalLeftVotes : els.modalRightVotes;
 
-    photo.src = c.image || "";
-    photo.style.display = c.image ? "block" : "none";
-    photo.onerror = () => (photo.style.display = "none");
+    if (photo) {
+      photo.src = c.image || "";
+      photo.style.display = c.image ? "block" : "none";
+      photo.onerror = () => {
+        photo.style.display = "none";
+      };
+    }
 
-    name.textContent = c.name;
-    party.textContent = c.party;
-    party.style.color = c.color;
-    pctEl.textContent = `${candidatePct.toFixed(1)}%`;
-    pctEl.style.color = c.color;
-    votes.textContent = `${candidateVotes.toLocaleString()} votes`;
+    setText(name, c.name);
+    setText(party, c.party);
+    if (party) party.style.color = c.color;
+
+    setText(pctEl, `${candidatePct.toFixed(1)}%`);
+    if (pctEl) pctEl.style.color = c.color;
+
+    setText(votes, `${candidateVotes.toLocaleString()} votes`);
   }
 
   function closeStateModal() {
-    els.stateModal.classList.add("hidden");
+    els.stateModal?.classList.add("hidden");
   }
 
   function openPathModal() {
+    if (!els.pathModal) return;
+
     els.pathModal.classList.remove("hidden");
-    els.pathLeftName.textContent = leftCandidate.shortName || leftCandidate.party;
-    els.pathRightName.textContent = rightCandidate.shortName || rightCandidate.party;
+    setText(els.pathLeftName, leftCandidate.shortName || leftCandidate.party);
+    setText(els.pathRightName, rightCandidate.shortName || rightCandidate.party);
 
     if (!pathMap) {
       setTimeout(initPathMap, 80);
@@ -921,15 +983,28 @@
   }
 
   function closePathModal() {
-    els.pathModal.classList.add("hidden");
+    els.pathModal?.classList.add("hidden");
   }
 
   function initPathMap() {
+    if (!document.getElementById("path-map")) return;
+
     pathMap = new maplibregl.Map({
       container: "path-map",
-      style: map.getStyle(),
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            attribution: "© OpenStreetMap contributors",
+          },
+        },
+        layers: [{ id: "osm", type: "raster", source: "osm" }],
+      },
       center: [-98.5795, 39.8283],
-      zoom: 3.15
+      zoom: 3.15,
     });
 
     pathMap.on("load", () => {
@@ -943,16 +1018,17 @@
 
     const data = JSON.parse(JSON.stringify(geojson));
 
-    data.features = data.features.filter(f => normalizeAbbr(getFeatureAbbr(f)) !== "PR").map(f => {
-      const row = findRowForFeature(f);
-      const abbr = normalizeAbbr(getFeatureAbbr(f));
+    data.features = data.features
+      .filter(f => normalizeAbbrFromFeature(f) !== "PR")
+      .map(f => {
+        const abbr = normalizeAbbrFromFeature(f);
+        const r = rowByAbbr(abbr);
 
-      f.properties = f.properties || {};
-      f.properties.aprp_abbr = abbr;
-      f.properties.fill = pathColor(abbr, row);
+        f.properties.abbr = abbr;
+        f.properties.fill = pathColor(abbr, r);
 
-      return f;
-    });
+        return f;
+      });
 
     if (pathMap.getSource("path-states")) {
       pathMap.getSource("path-states").setData(data);
@@ -967,8 +1043,8 @@
       source: "path-states",
       paint: {
         "fill-color": ["get", "fill"],
-        "fill-opacity": 0.92
-      }
+        "fill-opacity": 0.9,
+      },
     });
 
     pathMap.addLayer({
@@ -978,32 +1054,46 @@
       paint: {
         "line-color": "#fff",
         "line-width": 1,
-        "line-opacity": 0.8
-      }
+        "line-opacity": 0.8,
+      },
     });
 
     pathMap.on("click", "path-states-fill", e => {
-      const abbr = e.features?.[0]?.properties?.aprp_abbr;
-      if (abbr) cyclePathState(abbr);
+      cyclePathState(e.features[0].properties.abbr);
+    });
+
+    pathMap.on("mousemove", "path-states-fill", () => {
+      pathMap.getCanvas().style.cursor = "pointer";
+    });
+
+    pathMap.on("mouseleave", "path-states-fill", () => {
+      pathMap.getCanvas().style.cursor = "";
     });
   }
 
   function cyclePathState(abbr) {
-    const key = normalizeAbbr(abbr);
-    const current = pathSelections[key] || "";
+    const current = pathSelections[abbr] || "";
 
-    if (!current) pathSelections[key] = leftCandidate.id;
-    else if (current === leftCandidate.id) pathSelections[key] = rightCandidate.id;
-    else delete pathSelections[key];
+    if (!current) {
+      pathSelections[abbr] = leftCandidate.id;
+    } else if (current === leftCandidate.id) {
+      pathSelections[abbr] = rightCandidate.id;
+    } else {
+      delete pathSelections[abbr];
+    }
 
     drawPathMap();
     updatePathTotals();
   }
 
   function pathColor(abbr, row) {
-    const selected = pathSelections[normalizeAbbr(abbr)];
-    if (selected) return findCandidate(selected)?.color || colors.unreported;
-    return row ? colorForRow(row) : colors.unreported;
+    const selected = pathSelections[abbr];
+
+    if (selected) {
+      return findCandidate(selected)?.color || defaultColors.tossup;
+    }
+
+    return row ? colorForRow(row) : defaultColors.uncalled;
   }
 
   function updatePathTotals() {
@@ -1011,47 +1101,79 @@
     let rightEv = 0;
 
     rows.forEach(r => {
-      const selected = pathSelections[normalizeAbbr(r.abbr)];
-      if (selected === leftCandidate.id) leftEv += r.electoral_votes;
-      if (selected === rightCandidate.id) rightEv += r.electoral_votes;
+      const selected = pathSelections[r.abbr];
+
+      if (selected === leftCandidate.id) leftEv += Number(r.electoral_votes || 0);
+      if (selected === rightCandidate.id) rightEv += Number(r.electoral_votes || 0);
     });
 
-    els.pathLeftEv.textContent = `${leftEv} EV`;
-    els.pathRightEv.textContent = `${rightEv} EV`;
-    els.pathLeftEv.style.color = leftCandidate.color;
-    els.pathRightEv.style.color = rightCandidate.color;
+    setText(els.pathLeftEv, `${leftEv} EV`);
+    setText(els.pathRightEv, `${rightEv} EV`);
+
+    if (els.pathLeftEv) els.pathLeftEv.style.color = leftCandidate.color;
+    if (els.pathRightEv) els.pathRightEv.style.color = rightCandidate.color;
   }
 
-  function findRowForFeature(feature) {
-    const abbr = normalizeAbbr(getFeatureAbbr(feature));
-    const name = normalizeName(getFeatureName(feature));
-    return rowByAbbr[abbr] || rowByName[name] || null;
+  function rowByAbbr(abbr) {
+    const norm = normalizeAbbr(abbr);
+    return rows.find(r => normalizeAbbr(r.abbr) === norm);
   }
 
-  function getFeatureAbbr(f) {
-    const p = f?.properties || {};
-    return p.abbr || p.STUSPS || p.postal || p.STATE_ABBR || p.state_abbr || "";
+  function normalizeAbbrFromFeature(f) {
+    return normalizeAbbr(
+      f.properties.abbr ||
+      f.properties.STUSPS ||
+      f.properties.postal ||
+      f.properties.STATE_ABBR ||
+      f.properties.state ||
+      f.properties.STATE ||
+      f.properties.NAME ||
+      f.properties.name
+    );
   }
 
-  function getFeatureName(f) {
-    const p = f?.properties || {};
-    return p.NAME || p.name || p.STATE_NAME || p.state_name || "";
+  function normalizeAbbr(value) {
+    const raw = String(value || "").trim();
+
+    if (raw.length === 2) return raw.toUpperCase();
+
+    const lower = raw.toLowerCase();
+    return STATE_NAME_TO_ABBR[lower] || raw.toUpperCase();
   }
 
-  function normalizeAbbr(s) {
-    return String(s || "").trim().toUpperCase();
+  function candidateName(id) {
+    return findCandidate(id)?.shortName || String(id || "").toUpperCase();
   }
 
-  function normalizeName(s) {
-    return String(s || "").trim().toLowerCase().replace(/\./g, "").replace(/\s+/g, " ");
+  function getPctForCandidate(r, id) {
+    const norm = normalizePartyId(id);
+    if (norm === "gop") return Number(r.gop_pct || 0);
+    if (norm === "dem") return Number(r.dem_pct || r.dnc_pct || 0);
+    if (norm === "ind") return Number(r.ind_pct || 0);
+    return 0;
   }
 
   function pct(a, b) {
     return b ? (Number(a || 0) / Number(b)) * 100 : 0;
   }
 
-  function clamp(n, min, max) {
-    return Math.max(min, Math.min(max, Number.isFinite(n) ? n : min));
+  function setText(el, value) {
+    if (!el) return;
+    el.textContent = value;
+  }
+
+  function showError(msg) {
+    if (!els.error) {
+      console.error(msg);
+      return;
+    }
+
+    els.error.textContent = msg;
+    els.error.classList.remove("hidden");
+  }
+
+  function hideError() {
+    els.error?.classList.add("hidden");
   }
 
   function esc(s) {
@@ -1060,21 +1182,12 @@
       "<": "&lt;",
       ">": "&gt;",
       "'": "&#39;",
-      '"': "&quot;"
+      '"': "&quot;",
     }[m]));
   }
 
   function escAttr(s) {
     return esc(s).replace(/`/g, "&#96;");
-  }
-
-  function showError(msg) {
-    els.error.textContent = msg;
-    els.error.classList.remove("hidden");
-  }
-
-  function hideError() {
-    els.error.classList.add("hidden");
   }
 
   window.__openStateResult = openStateModal;
