@@ -23,7 +23,9 @@ html,body{
   color:var(--text);
 }
 
-button,input,textarea,select{font:inherit}
+button,input,textarea,select{
+  font:inherit;
+}
 
 button{
   border:0;
@@ -35,7 +37,21 @@ button{
   color:white;
 }
 
-.hidden{display:none!important}
+button.danger{
+  background:#dc2626;
+}
+
+button:hover{
+  filter:brightness(1.08);
+}
+
+button.danger:hover{
+  filter:brightness(1.12);
+}
+
+.hidden{
+  display:none!important;
+}
 
 .admin-shell{
   min-height:100vh;
@@ -60,7 +76,9 @@ button{
   letter-spacing:.22em;
 }
 
-h1,h2,p{margin-top:0}
+h1,h2,p{
+  margin-top:0;
+}
 
 h1{
   margin-bottom:5px;
@@ -109,8 +127,13 @@ h1{
   color:#0f172a;
 }
 
-.tab-panel{display:none}
-.tab-panel.active{display:block}
+.tab-panel{
+  display:none;
+}
+
+.tab-panel.active{
+  display:block;
+}
 
 .card{
   background:linear-gradient(180deg,rgba(17,24,39,.96),rgba(8,13,25,.96));
@@ -185,6 +208,14 @@ input:focus,textarea:focus{
   border:1px solid rgba(255,255,255,.08);
   border-radius:14px;
   padding:12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+
+.item-row > div{
+  min-width:0;
 }
 
 .item-row strong{
@@ -198,6 +229,12 @@ input:focus,textarea:focus{
   color:var(--muted);
   font-weight:800;
   font-size:13px;
+}
+
+.small-delete{
+  padding:7px 10px;
+  font-size:12px;
+  flex:0 0 auto;
 }
 
 .muted{
@@ -259,18 +296,39 @@ input:focus,textarea:focus{
 }
 
 @media(max-width:1000px){
-  .grid{grid-template-columns:1fr 1fr}
-  textarea{grid-column:1 / -1}
+  .grid{
+    grid-template-columns:1fr 1fr;
+  }
+
+  textarea{
+    grid-column:1 / -1;
+  }
 }
 
-@media(max-width:600px){
-  .admin-shell{padding:12px}
+@media(max-width:650px){
+  .admin-shell{
+    padding:12px;
+  }
 
   .topbar,.section-head{
     align-items:flex-start;
     flex-direction:column;
   }
 
-  h1{font-size:30px}
-  .grid{grid-template-columns:1fr}
+  h1{
+    font-size:30px;
+  }
+
+  .grid{
+    grid-template-columns:1fr;
+  }
+
+  .item-row{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .small-delete{
+    width:100%;
+  }
 }
