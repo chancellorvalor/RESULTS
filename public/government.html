@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="./archive.css?v=23" />
+  <link rel="stylesheet" href="./archive.css?v=24" />
 
   <style>
     .government-page {
@@ -79,6 +79,12 @@
       border: 1px solid rgba(148,163,184,.18);
       font-weight: 900;
       cursor: pointer;
+      transition: .18s ease;
+    }
+
+    .map-tool-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.10);
     }
 
     .map-tool-btn.active {
@@ -351,8 +357,8 @@
       <p class="kicker">FEDERAL & REGIONAL STRUCTURE</p>
       <h2>Interactive Government Directory</h2>
       <p>
-        This map links each state to its APRP region, House district, governor, senators, and representative.
-        It reads from the same backend roster records used by the FEC/Government Control page when Supabase read access is available.
+        This public page reads the synced government roster from Supabase.
+        Changes made in the Government / FEC Control page publish into the shared public roster and should appear here after refresh.
       </p>
 
       <div class="quick-buttons">
@@ -456,8 +462,7 @@
 
           <section class="source-note">
             <strong>Roster sync:</strong>
-            Public data should update after the FEC/Government Control page saves to Supabase.
-            If this still shows fallback/vacant data, the public anon read policy or table name needs to be fixed.
+            This page reads <code>government_public_roster</code>. After editing the Government / FEC Control page, press save, then refresh this page.
           </section>
         </div>
       </aside>
@@ -492,7 +497,7 @@
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=23"></script>
-  <script src="./government.js?v=23"></script>
+  <script src="../shared/config.js?v=24"></script>
+  <script src="./government.js?v=24"></script>
 </body>
 </html>
