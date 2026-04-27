@@ -1,1 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>APRP Hall of Presidents</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./archive.css?v=11" />
+</head>
+
+<body>
+  <header class="archive-header">
+    <div>
+      <p class="kicker">APRP PRESIDENTS</p>
+      <h1>Hall of Presidents</h1>
+      <p class="subline">Presidential portraits, terms, parties, vice presidents, first ladies, ideology, summaries, accomplishments, and scandals.</p>
+    </div>
+
+    <nav class="top-links">
+      <a href="./index.html">Live Results</a>
+      <a href="./archive.html">Archive Hub</a>
+      <a href="./presidents.html">Presidents</a>
+      <a href="./government.html">Government</a>
+      <a href="./economy.html">Economy</a>
+      <a href="./elections.html">Elections</a>
+      <a href="./timeline.html">Timeline</a>
+      <a href="./laws.html">Laws</a>
+    </nav>
+  </header>
+
+  <main class="archive-shell">
+    <section id="error-box" class="error-box hidden"></section>
+
+    <section class="hero-card">
+      <p class="kicker">EXECUTIVE HISTORY</p>
+      <h2 id="current-title">Presidential Directory</h2>
+      <p id="current-summary">
+        Browse every archived APRP president and administration record from the archive backend.
+      </p>
+
+      <div class="quick-buttons">
+        <a href="#presidents">President List</a>
+        <a href="./archive.html">Back to Archive</a>
+        <a href="./government.html">Government</a>
+        <a href="./elections.html">Election Archives</a>
+      </div>
+    </section>
+
+    <section id="presidents" class="section-card">
+      <div class="section-head">
+        <div>
+          <p class="kicker">HALL</p>
+          <h2>Presidents</h2>
+        </div>
+      </div>
+
+      <div id="president-list" class="president-grid">
+        <p class="muted">Loading presidents...</p>
+      </div>
+    </section>
+
+    <!-- Hidden placeholders so archive.js can run safely on this dedicated page -->
+    <div class="hidden">
+      <div id="macro-stats"></div>
+      <div id="recent-events"></div>
+      <div id="government-list"></div>
+      <div id="economy-list"></div>
+      <div id="potus-election-list"></div>
+      <div id="congress-election-list"></div>
+      <div id="timeline-list"></div>
+      <div id="law-list"></div>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="../shared/config.js?v=11"></script>
+  <script src="./archive.js?v=11"></script>
+</body>
+</html>
