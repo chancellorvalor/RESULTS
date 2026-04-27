@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./archive.css?v=7" />
+  <link rel="stylesheet" href="./archive.css?v=9" />
 </head>
 
 <body>
@@ -54,10 +54,14 @@
 
       <aside class="info-panel">
         <h3>Key Macro Stats</h3>
-        <div id="macro-stats" class="stat-grid"></div>
+        <div id="macro-stats" class="stat-grid">
+          <p class="muted">Loading macro stats...</p>
+        </div>
 
         <h3>Current / Recent Events</h3>
-        <div id="recent-events" class="mini-list"></div>
+        <div id="recent-events" class="mini-list">
+          <p class="muted">Loading recent events...</p>
+        </div>
       </aside>
     </section>
 
@@ -116,7 +120,10 @@
         </div>
         <a class="section-link" href="./presidents.html">Open Presidents</a>
       </div>
-      <div id="president-list" class="president-grid"></div>
+
+      <div id="president-list" class="president-grid">
+        <p class="muted">Loading presidents...</p>
+      </div>
     </section>
 
     <section id="government" class="section-card">
@@ -127,7 +134,10 @@
         </div>
         <a class="section-link" href="./government.html">Open Government</a>
       </div>
-      <div id="government-list" class="region-grid"></div>
+
+      <div id="government-list" class="region-grid">
+        <p class="muted">Loading government...</p>
+      </div>
     </section>
 
     <section id="economy" class="section-card">
@@ -138,7 +148,10 @@
         </div>
         <a class="section-link" href="./economy.html">Open Economy</a>
       </div>
-      <div id="economy-list" class="snapshot-grid"></div>
+
+      <div id="economy-list" class="snapshot-grid">
+        <p class="muted">Loading economy...</p>
+      </div>
     </section>
 
     <section id="potus-elections" class="section-card">
@@ -149,7 +162,10 @@
         </div>
         <a class="section-link" href="./elections.html">Open Elections</a>
       </div>
-      <div id="potus-election-list" class="election-grid"></div>
+
+      <div id="potus-election-list" class="election-grid">
+        <p class="muted">Loading presidential elections...</p>
+      </div>
     </section>
 
     <section id="congress-elections" class="section-card">
@@ -160,7 +176,10 @@
         </div>
         <a class="section-link" href="./elections.html">Open Elections</a>
       </div>
-      <div id="congress-election-list" class="election-grid"></div>
+
+      <div id="congress-election-list" class="election-grid">
+        <p class="muted">Loading congressional elections...</p>
+      </div>
     </section>
 
     <section id="timeline" class="section-card">
@@ -171,7 +190,10 @@
         </div>
         <a class="section-link" href="./timeline.html">Open Timeline</a>
       </div>
-      <div id="timeline-list" class="timeline-list"></div>
+
+      <div id="timeline-list" class="timeline-list">
+        <p class="muted">Loading timeline...</p>
+      </div>
     </section>
 
     <section id="laws" class="section-card">
@@ -182,12 +204,15 @@
         </div>
         <a class="section-link" href="./laws.html">Open Laws</a>
       </div>
-      <div id="law-list" class="mini-list"></div>
+
+      <div id="law-list" class="mini-list">
+        <p class="muted">Loading laws...</p>
+      </div>
     </section>
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=7"></script>
-  <script src="./archive.js?v=7"></script>
+  <script src="../shared/config.js?v=9"></script>
+  <script src="./archive.js?v=9"></script>
 </body>
 </html>
