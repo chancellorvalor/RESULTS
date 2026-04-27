@@ -122,32 +122,66 @@
     }
   ];
 
+  /*
+    The public page now attempts the likely FEC/Government Control table names.
+    Your admin screenshot has roster-style columns:
+    region, seat_name, class, custom_class, holder, party, start, end, status, order
+  */
   const TABLE_OPTIONS = {
     regions: [
       "government_regions",
+      "gov_regions",
+      "roster_regions",
       "fec_regions",
       "regions",
-      "region_assignments"
+      "region_assignments",
+      "government_region_assignments",
+      "gov_region_assignments",
+      "aprp_regions"
     ],
     governors: [
       "government_governors",
+      "gov_governors",
+      "roster_governors",
       "fec_governors",
       "governors",
-      "government_roster_governors"
+      "government_roster_governors",
+      "government_governor_seats",
+      "gov_governor_seats",
+      "governor_seats",
+      "aprp_governors"
     ],
     senators: [
       "government_senate_seats",
+      "government_senate",
+      "gov_senate_seats",
+      "gov_senate",
+      "roster_senate_seats",
+      "roster_senate",
       "fec_senate_seats",
+      "fec_senate",
       "senate_seats",
       "government_senators",
-      "senators"
+      "gov_senators",
+      "senators",
+      "aprp_senate_seats",
+      "aprp_senators"
     ],
     house: [
       "government_house_seats",
+      "government_house",
+      "gov_house_seats",
+      "gov_house",
+      "roster_house_seats",
+      "roster_house",
       "fec_house_seats",
+      "fec_house",
       "house_seats",
       "government_representatives",
-      "representatives"
+      "gov_representatives",
+      "representatives",
+      "aprp_house_seats",
+      "aprp_representatives"
     ]
   };
 
@@ -180,8 +214,8 @@
   let governmentData = null;
   let stateData = {};
   let map;
-  let mapMode = "region";
   let loadedTableNames = {};
+  let loadWarnings = [];
 
   document.addEventListener("DOMContentLoaded", init);
 
@@ -195,14 +229,16 @@
       renderLegend(governmentData);
       renderDirectory(governmentData);
       renderGovernmentRecords(governmentData);
+      renderSourceWarning();
       initMap();
 
       els.modeRegion?.addEventListener("click", () => setMapMode("region"));
       els.modeDistrict?.addEventListener("click", () => setMapMode("district"));
       els.resetMap?.addEventListener("click", resetMapView);
 
-      console.log("Government map loaded from:", loadedTableNames);
-      console.log("Government data:", governmentData);
+      console.log("Government map backend source:", loadedTableNames);
+      console.log("Government map backend warnings:", loadWarnings);
+      console.log("Government map loaded data:", governmentData);
     } catch (err) {
       showError("Could not load government map. " + (err.message || err));
       console.error(err);
@@ -214,10 +250,10 @@
 
     if (!supabase) {
       loadedTableNames = {
-        regions: "fallback",
-        governors: "fallback",
-        senators: "fallback",
-        house: "fallback"
+        regions: "fallback-no-supabase",
+        governors: "fallback-no-supabase",
+        senators: "fallback-no-supabase",
+        house: "fallback-no-supabase"
       };
       return fallback;
     }
@@ -227,12 +263,24 @@
     const senatorsRaw = await selectFirstWorkingTable("senators", TABLE_OPTIONS.senators);
     const houseRaw = await selectFirstWorkingTable("house", TABLE_OPTIONS.house);
 
-    return {
-      regions: normalizeRegions(regionsRaw || fallback.regions, fallback.regions),
-      governors: normalizeGovernors(governorsRaw || fallback.governors, fallback.governors),
-      senators: normalizeSenators(senatorsRaw || fallback.senators, fallback.senators),
-      house: normalizeHouse(houseRaw || fallback.house, fallback.house)
-    };
+    const regions = normalizeRegions(regionsRaw || fallback.regions, fallback.regions);
+    const governors = normalizeGovernors(governorsRaw || fallback.governors, fallback.governors);
+    const senators = normalizeSenators(senatorsRaw || fallback.senators, fallback.senators);
+    const house = normalizeHouse(houseRaw || fallback.house, fallback.house);
+
+    if (!senatorsRaw) {
+      loadWarnings.push("Senate roster did not load from backend. Public page is using fallback vacant seats.");
+    }
+
+    if (!houseRaw) {
+      loadWarnings.push("House roster did not load from backend. Public page is using fallback vacant seats.");
+    }
+
+    if (!governorsRaw) {
+      loadWarnings.push("Governor roster did not load from backend. Public page is using fallback vacant governors.");
+    }
+
+    return { regions, governors, senators, house };
   }
 
   async function selectFirstWorkingTable(kind, tableNames) {
@@ -240,14 +288,19 @@
       try {
         const { data, error } = await supabase
           .from(tableName)
-          .select("*");
+          .select("*")
+          .limit(1000);
 
         if (!error && Array.isArray(data)) {
           loadedTableNames[kind] = tableName;
           return data;
         }
-      } catch {
-        // try next table
+
+        if (error) {
+          loadWarnings.push(`${kind}: ${tableName} failed: ${error.message}`);
+        }
+      } catch (err) {
+        loadWarnings.push(`${kind}: ${tableName} failed: ${err.message || err}`);
       }
     }
 
@@ -283,12 +336,13 @@
         senator: "Vacant / Unassigned",
         holder: "Vacant / Unassigned",
         party: "—",
-        status: "No backend record"
+        status: "No backend record",
+        order: Number(cls)
       }))
     );
 
     const house = REGION_DEFAULTS.flatMap(region =>
-      region.districts.map(district => ({
+      region.districts.map((district, index) => ({
         region: region.name,
         district_code: district.code,
         seat_name: district.code,
@@ -296,7 +350,8 @@
         representative: "Vacant / Unassigned",
         holder: "Vacant / Unassigned",
         party: "—",
-        status: "No backend record"
+        status: "No backend record",
+        order: index + 1
       }))
     );
 
@@ -329,8 +384,7 @@
       };
     });
 
-    const merged = mergeRegionDefaults(normalized, fallbackRows);
-    return merged;
+    return mergeRegionDefaults(normalized, fallbackRows);
   }
 
   function mergeRegionDefaults(rows, fallbackRows) {
@@ -351,35 +405,57 @@
   function normalizeGovernors(rows, fallbackRows) {
     if (!Array.isArray(rows) || !rows.length) return fallbackRows;
 
-    return rows.map(row => ({
-      region: cleanRegionName(getAny(row, ["region", "region_name", "name"])),
-      governor: getAny(row, ["governor", "holder", "office_holder", "incumbent", "name"]) || "Vacant",
-      party: getAny(row, ["party", "governor_party"]) || "—",
-      lieutenant_governor: getAny(row, ["lieutenant_governor", "lt_governor", "ltg"]) || "—",
-      status: getAny(row, ["status", "vacancy_status"]) || (row.vacant ? "Vacant" : "Occupied")
-    }));
+    return rows.map(row => {
+      const holder = getAny(row, [
+        "holder",
+        "governor",
+        "office_holder",
+        "incumbent",
+        "name",
+        "governor_name"
+      ]);
+
+      return {
+        region: cleanRegionName(getAny(row, ["region", "region_name", "state_region", "name"])),
+        governor: holder || "Vacant / Unassigned",
+        holder: holder || "Vacant / Unassigned",
+        party: getAny(row, ["party", "governor_party"]) || "—",
+        lieutenant_governor: getAny(row, ["lieutenant_governor", "lt_governor", "ltg", "lieutenant", "deputy"]) || "—",
+        start: getAny(row, ["start", "term_start", "start_date"]) || "",
+        end: getAny(row, ["end", "term_end", "end_date"]) || "",
+        status: getAny(row, ["status", "vacancy_status"]) || (row.vacant ? "Vacant" : holder ? "Occupied" : "Vacant"),
+        order: Number(getAny(row, ["order", "display_order", "sort_order"]) || 999)
+      };
+    }).sort((a, b) => a.order - b.order);
   }
 
   function normalizeSenators(rows, fallbackRows) {
     if (!Array.isArray(rows) || !rows.length) return fallbackRows;
 
     return rows.map(row => {
-      const region = cleanRegionName(getAny(row, ["region", "region_name"]));
-      const cls = getAny(row, ["custom_class", "class", "senate_class", "seat_class"]);
-      const holder = getAny(row, ["holder", "senator", "office_holder", "incumbent", "name"]);
+      const region = cleanRegionName(getAny(row, ["region", "region_name", "state_region"]));
+      const rawClass = getAny(row, ["custom_class", "class", "senate_class", "seat_class"]);
+      const holder = getAny(row, [
+        "holder",
+        "senator",
+        "office_holder",
+        "incumbent",
+        "name",
+        "senator_name"
+      ]);
 
       return {
         region,
-        seat_name: getAny(row, ["seat_name", "name", "seat"]) || `${region} Class ${cls} Senator`,
-        class: normalizeClassValue(cls),
-        custom_class: normalizeClassValue(cls),
-        senator: holder || "Vacant",
-        holder: holder || "Vacant",
+        seat_name: getAny(row, ["seat_name", "name", "seat", "office"]) || `${region} Class ${rawClass} Senator`,
+        class: normalizeClassValue(rawClass),
+        custom_class: normalizeClassValue(rawClass),
+        senator: holder || "Vacant / Unassigned",
+        holder: holder || "Vacant / Unassigned",
         party: getAny(row, ["party"]) || "—",
         start: getAny(row, ["start", "term_start", "start_date"]) || "",
         end: getAny(row, ["end", "term_end", "end_date"]) || "",
-        status: getAny(row, ["status", "vacancy_status"]) || (row.vacant ? "Vacant" : "Occupied"),
-        order: Number(getAny(row, ["order", "display_order", "sort_order"]) || 999)
+        status: getAny(row, ["status", "vacancy_status"]) || (row.vacant ? "Vacant" : holder ? "Occupied" : "Vacant"),
+        order: Number(getAny(row, ["order", "display_order", "sort_order"]) || normalizeClassValue(rawClass) || 999)
       };
     }).sort((a, b) => a.order - b.order);
   }
@@ -388,14 +464,15 @@
     if (!Array.isArray(rows) || !rows.length) return fallbackRows;
 
     return rows.map(row => {
-      const region = cleanRegionName(getAny(row, ["region", "region_name"]));
+      const region = cleanRegionName(getAny(row, ["region", "region_name", "state_region"]));
       const code = getAny(row, [
         "district_code",
         "seat_name",
         "seat",
         "code",
         "name",
-        "district"
+        "district",
+        "district_id"
       ]);
 
       const holder = getAny(row, [
@@ -404,7 +481,8 @@
         "rep",
         "office_holder",
         "incumbent",
-        "name"
+        "name",
+        "representative_name"
       ]);
 
       return {
@@ -412,12 +490,12 @@
         district_code: code || "—",
         seat_name: code || "—",
         district_name: getAny(row, ["district_name", "label", "description"]) || code || "—",
-        representative: holder || "Vacant",
-        holder: holder || "Vacant",
+        representative: holder || "Vacant / Unassigned",
+        holder: holder || "Vacant / Unassigned",
         party: getAny(row, ["party"]) || "—",
         start: getAny(row, ["start", "term_start", "start_date"]) || "",
         end: getAny(row, ["end", "term_end", "end_date"]) || "",
-        status: getAny(row, ["status", "vacancy_status"]) || (row.vacant ? "Vacant" : "Occupied"),
+        status: getAny(row, ["status", "vacancy_status"]) || (row.vacant ? "Vacant" : holder ? "Occupied" : "Vacant"),
         order: Number(getAny(row, ["order", "display_order", "sort_order"]) || 999)
       };
     }).sort((a, b) => a.order - b.order);
@@ -599,7 +677,7 @@
   }
 
   async function loadStatesGeojson() {
-    const response = await fetch("./data/states.geojson?v=22");
+    const response = await fetch("./data/states.geojson?v=23");
     if (!response.ok) throw new Error("Could not load public/data/states.geojson");
 
     const geojson = await response.json();
@@ -637,8 +715,6 @@
   }
 
   function setMapMode(mode) {
-    mapMode = mode;
-
     els.modeRegion?.classList.toggle("active", mode === "region");
     els.modeDistrict?.classList.toggle("active", mode === "district");
 
@@ -694,7 +770,7 @@
       ? `${details.district.code} — ${details.district.label}`
       : "Unassigned";
 
-    els.governor.textContent = details.governor?.governor || "Vacant / Unassigned";
+    els.governor.textContent = details.governor?.governor || details.governor?.holder || "Vacant / Unassigned";
     els.governorParty.textContent = details.governor?.party || "—";
     els.ltGovernor.textContent = details.governor?.lieutenant_governor || "—";
     els.governorStatus.textContent = details.governor?.status || "—";
@@ -773,6 +849,7 @@
     els.governmentList.innerHTML = government.regions.map(region => {
       const governor = findGovernor(government.governors, region.name);
       const senators = findSenators(government.senators, region.name);
+      const houseSeats = government.house.filter(h => sameRegion(h.region, region.name));
 
       return `
         <article class="record-card">
@@ -781,15 +858,34 @@
           <div class="record-meta">
             <span class="pill">${escapeHtml(region.cycle || "—")} Cycle</span>
             <span class="pill">${escapeHtml(region.states.length)} States</span>
-            <span class="pill">${escapeHtml((region.districts || []).length)} House Seats</span>
-            <span class="pill">Source: ${escapeHtml(loadedTableNames.senators || "fallback")}</span>
+            <span class="pill">${escapeHtml((region.districts || []).length)} Districts</span>
+            <span class="pill">Senate Source: ${escapeHtml(loadedTableNames.senators || "fallback")}</span>
+            <span class="pill">House Source: ${escapeHtml(loadedTableNames.house || "fallback")}</span>
           </div>
 
-          <p><strong>Governor:</strong> ${escapeHtml(governor?.governor || "Vacant")} ${governor?.party ? `(${escapeHtml(governor.party)})` : ""}</p>
+          <p><strong>Governor:</strong> ${escapeHtml(governor?.governor || governor?.holder || "Vacant")} ${governor?.party ? `(${escapeHtml(governor.party)})` : ""}</p>
           <p><strong>Senate:</strong> ${escapeHtml(senators.map(s => `${formatSenateClass(s.class)} — ${s.senator || s.holder} (${s.party || "—"})`).join(" | ") || "Vacant / Unassigned")}</p>
+          <p><strong>House:</strong> ${escapeHtml(houseSeats.map(h => `${h.district_code} — ${h.representative || h.holder} (${h.party || "—"})`).join(" | ") || "Vacant / Unassigned")}</p>
         </article>
       `;
     }).join("");
+  }
+
+  function renderSourceWarning() {
+    if (!loadWarnings.length) return;
+
+    const criticalFallback =
+      loadedTableNames.senators === "fallback" ||
+      loadedTableNames.house === "fallback" ||
+      loadedTableNames.governors === "fallback";
+
+    if (!criticalFallback) return;
+
+    showError(
+      "Public government map is not reading one or more roster tables yet. " +
+      "Open browser console to see attempted table names. Current sources: " +
+      JSON.stringify(loadedTableNames)
+    );
   }
 
   function normalizeDistricts(value, fallbackDistricts) {
