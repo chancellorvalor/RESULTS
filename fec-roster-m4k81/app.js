@@ -14,6 +14,8 @@
     selectedRegion: document.getElementById("selected-region"),
     selectedRegionEditor: document.getElementById("selected-region-editor"),
     selectedRegionStates: document.getElementById("selected-region-states"),
+    stateToAssign: document.getElementById("state-to-assign"),
+    assignStateDropdown: document.getElementById("assign-state-dropdown"),
     saveStateAssignments: document.getElementById("save-state-assignments"),
     resetMap: document.getElementById("reset-map"),
     legend: document.getElementById("map-legend"),
@@ -29,6 +31,22 @@
     houseRegionFilter: document.getElementById("house-region-filter"),
     addHouseSeat: document.getElementById("add-house-seat")
   };
+
+  const allStates = [
+    ["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"],
+    ["CA", "California"], ["CO", "Colorado"], ["CT", "Connecticut"], ["DE", "Delaware"],
+    ["DC", "District of Columbia"], ["FL", "Florida"], ["GA", "Georgia"], ["HI", "Hawaii"],
+    ["ID", "Idaho"], ["IL", "Illinois"], ["IN", "Indiana"], ["IA", "Iowa"],
+    ["KS", "Kansas"], ["KY", "Kentucky"], ["LA", "Louisiana"], ["ME", "Maine"],
+    ["MD", "Maryland"], ["MA", "Massachusetts"], ["MI", "Michigan"], ["MN", "Minnesota"],
+    ["MS", "Mississippi"], ["MO", "Missouri"], ["MT", "Montana"], ["NE", "Nebraska"],
+    ["NV", "Nevada"], ["NH", "New Hampshire"], ["NJ", "New Jersey"], ["NM", "New Mexico"],
+    ["NY", "New York"], ["NC", "North Carolina"], ["ND", "North Dakota"], ["OH", "Ohio"],
+    ["OK", "Oklahoma"], ["OR", "Oregon"], ["PA", "Pennsylvania"], ["RI", "Rhode Island"],
+    ["SC", "South Carolina"], ["SD", "South Dakota"], ["TN", "Tennessee"], ["TX", "Texas"],
+    ["UT", "Utah"], ["VT", "Vermont"], ["VA", "Virginia"], ["WA", "Washington"],
+    ["WV", "West Virginia"], ["WI", "Wisconsin"], ["WY", "Wyoming"]
+  ];
 
   let regions = [];
   let regionStates = [];
@@ -59,6 +77,7 @@
 
     els.createRegion.onclick = createRegion;
     els.saveStateAssignments.onclick = saveStateAssignments;
+    els.assignStateDropdown.onclick = assignStateFromDropdown;
 
     els.selectedRegion.onchange = () => {
       selectedRegionId = els.selectedRegion.value;
@@ -90,7 +109,7 @@
   }
 
   async function loadGeoJson() {
-    const res = await fetch("../public/data/states.geojson?v=2");
+    const res = await fetch("../public/data/states.geojson?v=3");
     if (!res.ok) throw new Error("Could not load states.geojson from public/data.");
     geojson = await res.json();
   }
@@ -148,6 +167,7 @@
       pendingStateAssignments = {};
 
       if (!selectedRegionId && regions[0]) selectedRegionId = regions[0].id;
+      if (!regions.find(r => r.id === selectedRegionId) && regions[0]) selectedRegionId = regions[0].id;
 
       renderAll();
       drawMap();
@@ -159,6 +179,7 @@
 
   function renderAll() {
     renderRegionSelects();
+    renderStateDropdown();
     renderSelectedRegion();
     renderRegionsTable();
     renderSenateTable();
@@ -178,13 +199,21 @@
 
     els.selectedRegion.innerHTML = regions.map(r => {
       const selected = r.id === selectedRegionId ? "selected" : "";
-      return `<option value="${escAttr(r.id)}" ${selected}>${esc(r.name)} ${r.cycle_type ? `| ${esc(r.cycle_type)}` : ""}</option>`;
+      const cycle = r.cycle_type ? ` | ${r.cycle_type}` : "";
+      return `<option value="${escAttr(r.id)}" ${selected}>${esc(r.name + cycle)}</option>`;
     }).join("");
 
-    if (!regions.find(r => r.id === selectedRegionId) && regions[0]) {
-      selectedRegionId = regions[0].id;
-      els.selectedRegion.value = selectedRegionId;
-    }
+    els.selectedRegion.value = selectedRegionId;
+  }
+
+  function renderStateDropdown() {
+    const assigned = new Set(regionStates.map(s => normalizeAbbr(s.state_abbr)));
+
+    els.stateToAssign.innerHTML = allStates.map(([abbr, name]) => {
+      const current = getStateAssignment(abbr);
+      const suffix = current ? ` — currently ${regionById(current.region_id)?.name || "assigned"}` : " — unassigned";
+      return `<option value="${escAttr(abbr)}">${esc(name)} (${esc(abbr)})${esc(suffix)}</option>`;
+    }).join("");
   }
 
   function renderSelectedRegion() {
@@ -197,47 +226,43 @@
     }
 
     els.selectedRegionEditor.innerHTML = `
-      <div class="compact-edit-box" data-selected-region-id="${escAttr(region.id)}">
-        <div class="mini-grid">
-          <label>
-            Name
-            <input data-selected-region-field="name" value="${escAttr(region.name || "")}">
-          </label>
-
-          <label>
-            Slug
-            <input data-selected-region-field="slug" value="${escAttr(region.slug || "")}">
-          </label>
-
-          <label>
-            Cycle
-            <input data-selected-region-field="cycle_type" value="${escAttr(region.cycle_type || "")}" placeholder="P / M / Custom">
-          </label>
-
-          <label>
-            Label
-            <input data-selected-region-field="map_label" value="${escAttr(region.map_label || "")}">
-          </label>
-
-          <label>
-            Color
-            <input data-selected-region-field="color" value="${escAttr(region.color || "")}">
-          </label>
-
-          <label>
-            Order
-            <input data-selected-region-field="sort_order" type="number" value="${num(region.sort_order)}">
-          </label>
-        </div>
+      <div class="selected-grid" data-selected-region-id="${escAttr(region.id)}">
+        <label>
+          Name
+          <input data-selected-region-field="name" value="${escAttr(region.name || "")}">
+        </label>
 
         <label>
+          Slug
+          <input data-selected-region-field="slug" value="${escAttr(region.slug || "")}">
+        </label>
+
+        <label>
+          Cycle
+          <input data-selected-region-field="cycle_type" value="${escAttr(region.cycle_type || "")}" placeholder="P / M / Custom">
+        </label>
+
+        <label>
+          Label
+          <input data-selected-region-field="map_label" value="${escAttr(region.map_label || "")}">
+        </label>
+
+        <label>
+          Color
+          <input data-selected-region-field="color" value="${escAttr(region.color || "")}">
+        </label>
+
+        <label>
+          Order
+          <input data-selected-region-field="sort_order" type="number" value="${num(region.sort_order)}">
+        </label>
+
+        <label class="wide">
           Description
           <input data-selected-region-field="description" value="${escAttr(region.description || "")}">
         </label>
 
-        <div class="button-row">
-          <button data-save-selected-region="${escAttr(region.id)}">Save Selected Region</button>
-        </div>
+        <button class="wide-save" data-save-selected-region="${escAttr(region.id)}">Save Region Details</button>
       </div>
     `;
 
@@ -247,11 +272,11 @@
 
     els.selectedRegionStates.innerHTML = states.length
       ? states.map(s => `
-          <button class="state-chip" data-unassign-state="${escAttr(s.state_abbr)}">
-            ${esc(s.state_name)} <span>${esc(s.state_abbr)}</span>
+          <button class="state-chip" title="Click to remove" data-unassign-state="${escAttr(s.state_abbr)}">
+            ${esc(s.state_abbr)} <span>${esc(s.state_name)}</span>
           </button>
         `).join("")
-      : `<p class="muted">No states assigned. Click states on the map to assign them here.</p>`;
+      : `<p class="muted">No states assigned. Add one above or click states on the map.</p>`;
 
     els.selectedRegionStates.querySelectorAll("[data-unassign-state]").forEach(btn => {
       btn.onclick = () => unassignState(btn.dataset.unassignState);
@@ -289,45 +314,41 @@
       .filter(s => !filter || s.region_id === filter)
       .sort((a, b) => regionSort(a.region_id, b.region_id) || Number(a.sort_order || 0) - Number(b.sort_order || 0));
 
-    els.senateTable.innerHTML = list.map(seat => {
-      const region = regionById(seat.region_id);
-
-      return `
-        <tr data-senate-id="${escAttr(seat.id)}">
-          <td>
-            <select data-senate-field="region_id">
-              ${regions.map(r => option(r.id, r.name, seat.region_id)).join("")}
-            </select>
-          </td>
-          <td><input data-senate-field="seat_name" value="${escAttr(seat.seat_name || "")}"></td>
-          <td>
-            <select data-senate-field="seat_class">
-              ${option("", "None", seat.seat_class)}
-              ${option("Class 1", "Class 1", seat.seat_class)}
-              ${option("Class 2", "Class 2", seat.seat_class)}
-              ${option("Class 3", "Class 3", seat.seat_class)}
-              ${option("Special", "Special", seat.seat_class)}
-              ${option("Custom", "Custom", seat.seat_class)}
-            </select>
-          </td>
-          <td><input data-senate-field="custom_class" value="${escAttr(seat.custom_class || "")}" placeholder="Any custom class"></td>
-          <td><input data-senate-field="filler_name" value="${escAttr(seat.filler_name || "")}"></td>
-          <td><input data-senate-field="filler_party" value="${escAttr(seat.filler_party || "")}" placeholder="DNC/GOP/IND"></td>
-          <td><input data-senate-field="term_start" value="${escAttr(seat.term_start || "")}"></td>
-          <td><input data-senate-field="term_end" value="${escAttr(seat.term_end || "")}"></td>
-          <td>
-            <select data-senate-field="status">
-              ${option("occupied", "Occupied", seat.status)}
-              ${option("vacant", "Vacant", seat.status)}
-              ${option("appointed", "Appointed", seat.status)}
-              ${option("special_pending", "Special Pending", seat.status)}
-            </select>
-          </td>
-          <td><input data-senate-field="sort_order" type="number" value="${num(seat.sort_order)}"></td>
-          <td><button class="tiny-btn" data-save-senate="${escAttr(seat.id)}">Save</button></td>
-        </tr>
-      `;
-    }).join("");
+    els.senateTable.innerHTML = list.map(seat => `
+      <tr data-senate-id="${escAttr(seat.id)}">
+        <td>
+          <select data-senate-field="region_id">
+            ${regions.map(r => option(r.id, r.name, seat.region_id)).join("")}
+          </select>
+        </td>
+        <td><input data-senate-field="seat_name" value="${escAttr(seat.seat_name || "")}"></td>
+        <td>
+          <select data-senate-field="seat_class">
+            ${option("", "None", seat.seat_class)}
+            ${option("Class 1", "Class 1", seat.seat_class)}
+            ${option("Class 2", "Class 2", seat.seat_class)}
+            ${option("Class 3", "Class 3", seat.seat_class)}
+            ${option("Special", "Special", seat.seat_class)}
+            ${option("Custom", "Custom", seat.seat_class)}
+          </select>
+        </td>
+        <td><input data-senate-field="custom_class" value="${escAttr(seat.custom_class || "")}" placeholder="Any"></td>
+        <td><input data-senate-field="filler_name" value="${escAttr(seat.filler_name || "")}"></td>
+        <td><input data-senate-field="filler_party" value="${escAttr(seat.filler_party || "")}" placeholder="DNC/GOP/IND"></td>
+        <td><input data-senate-field="term_start" value="${escAttr(seat.term_start || "")}"></td>
+        <td><input data-senate-field="term_end" value="${escAttr(seat.term_end || "")}"></td>
+        <td>
+          <select data-senate-field="status">
+            ${option("occupied", "Occupied", seat.status)}
+            ${option("vacant", "Vacant", seat.status)}
+            ${option("appointed", "Appointed", seat.status)}
+            ${option("special_pending", "Special Pending", seat.status)}
+          </select>
+        </td>
+        <td><input data-senate-field="sort_order" type="number" value="${num(seat.sort_order)}"></td>
+        <td><button class="tiny-btn" data-save-senate="${escAttr(seat.id)}">Save</button></td>
+      </tr>
+    `).join("");
 
     els.senateTable.querySelectorAll("[data-save-senate]").forEach(btn => {
       btn.onclick = () => saveSenateSeat(btn.dataset.saveSenate);
@@ -337,29 +358,27 @@
   function renderGovernorTable() {
     els.governorTable.innerHTML = governors
       .sort((a, b) => regionSort(a.region_id, b.region_id))
-      .map(governor => {
-        return `
-          <tr data-governor-id="${escAttr(governor.id)}">
-            <td>${esc(regionById(governor.region_id)?.name || "Unknown")}</td>
-            <td><input data-governor-field="office_name" value="${escAttr(governor.office_name || "")}"></td>
-            <td><input data-governor-field="governor_name" value="${escAttr(governor.governor_name || "")}"></td>
-            <td><input data-governor-field="governor_party" value="${escAttr(governor.governor_party || "")}" placeholder="DNC/GOP/IND"></td>
-            <td><input data-governor-field="lt_governor_name" value="${escAttr(governor.lt_governor_name || "")}"></td>
-            <td><input data-governor-field="lt_governor_party" value="${escAttr(governor.lt_governor_party || "")}"></td>
-            <td><input data-governor-field="term_start" value="${escAttr(governor.term_start || "")}"></td>
-            <td><input data-governor-field="term_end" value="${escAttr(governor.term_end || "")}"></td>
-            <td>
-              <select data-governor-field="status">
-                ${option("occupied", "Occupied", governor.status)}
-                ${option("vacant", "Vacant", governor.status)}
-                ${option("acting", "Acting", governor.status)}
-                ${option("special_pending", "Special Pending", governor.status)}
-              </select>
-            </td>
-            <td><button class="tiny-btn" data-save-governor="${escAttr(governor.id)}">Save</button></td>
-          </tr>
-        `;
-      }).join("");
+      .map(governor => `
+        <tr data-governor-id="${escAttr(governor.id)}">
+          <td>${esc(regionById(governor.region_id)?.name || "Unknown")}</td>
+          <td><input data-governor-field="office_name" value="${escAttr(governor.office_name || "")}"></td>
+          <td><input data-governor-field="governor_name" value="${escAttr(governor.governor_name || "")}"></td>
+          <td><input data-governor-field="governor_party" value="${escAttr(governor.governor_party || "")}" placeholder="DNC/GOP/IND"></td>
+          <td><input data-governor-field="lt_governor_name" value="${escAttr(governor.lt_governor_name || "")}"></td>
+          <td><input data-governor-field="lt_governor_party" value="${escAttr(governor.lt_governor_party || "")}"></td>
+          <td><input data-governor-field="term_start" value="${escAttr(governor.term_start || "")}"></td>
+          <td><input data-governor-field="term_end" value="${escAttr(governor.term_end || "")}"></td>
+          <td>
+            <select data-governor-field="status">
+              ${option("occupied", "Occupied", governor.status)}
+              ${option("vacant", "Vacant", governor.status)}
+              ${option("acting", "Acting", governor.status)}
+              ${option("special_pending", "Special Pending", governor.status)}
+            </select>
+          </td>
+          <td><button class="tiny-btn" data-save-governor="${escAttr(governor.id)}">Save</button></td>
+        </tr>
+      `).join("");
 
     els.governorTable.querySelectorAll("[data-save-governor]").forEach(btn => {
       btn.onclick = () => saveGovernor(btn.dataset.saveGovernor);
@@ -408,28 +427,30 @@
 
     const data = JSON.parse(JSON.stringify(geojson));
 
-    data.features = (data.features || []).filter(f => getFeatureAbbr(f) !== "PR").map(f => {
-      const abbr = getFeatureAbbr(f);
-      const stateName = getFeatureName(f);
-      const assignment = getStateAssignment(abbr);
-      const region = assignment ? regionById(assignment.region_id) : null;
-      const isSelected = region && region.id === selectedRegionId;
+    data.features = (data.features || [])
+      .filter(f => getFeatureAbbr(f) !== "PR")
+      .map(f => {
+        const abbr = getFeatureAbbr(f);
+        const stateName = getFeatureName(f);
+        const assignment = getStateAssignment(abbr);
+        const region = assignment ? regionById(assignment.region_id) : null;
+        const isSelected = region && region.id === selectedRegionId;
 
-      f.properties = f.properties || {};
-      f.properties.aprp_abbr = abbr;
-      f.properties.aprp_name = stateName;
-      f.properties.fill = region ? region.color || "#64748b" : "#263244";
-      f.properties.outline = isSelected ? "#fbbf24" : "#f8fafc";
-      f.properties.hover = `
-        <div class="map-popup">
-          <h3>${esc(stateName || abbr)}</h3>
-          <p>${region ? esc(region.name) : "Unassigned"}</p>
-          <small>Click to assign to selected region.</small>
-        </div>
-      `;
+        f.properties = f.properties || {};
+        f.properties.aprp_abbr = abbr;
+        f.properties.aprp_name = stateName;
+        f.properties.fill = region ? region.color || "#64748b" : "#1f2937";
+        f.properties.outline = isSelected ? "#fbbf24" : "#f8fafc";
+        f.properties.hover = `
+          <div class="map-popup">
+            <h3>${esc(stateName || abbr)}</h3>
+            <p>${region ? esc(region.name) : "Unassigned"}</p>
+            <small>Click to assign to selected region.</small>
+          </div>
+        `;
 
-      return f;
-    });
+        return f;
+      });
 
     if (map.getSource("regions")) {
       map.getSource("regions").setData(data);
@@ -444,7 +465,7 @@
       source: "regions",
       paint: {
         "fill-color": ["get", "fill"],
-        "fill-opacity": 0.88
+        "fill-opacity": 0.9
       }
     });
 
@@ -491,6 +512,13 @@
     `).join("");
   }
 
+  function assignStateFromDropdown() {
+    const abbr = els.stateToAssign.value;
+    const state = allStates.find(([a]) => a === abbr);
+    if (!state) return;
+    assignStateToSelectedRegion(state[0], state[1]);
+  }
+
   function assignStateToSelectedRegion(abbr, stateName) {
     if (!selectedRegionId) {
       showError("Select a region first.");
@@ -518,6 +546,7 @@
       state_name: stateName || cleanAbbr
     };
 
+    renderStateDropdown();
     renderSelectedRegion();
     drawMap();
     showSuccess(`${cleanAbbr} assigned locally. Press Save State Assignments to commit.`);
@@ -530,6 +559,7 @@
     if (!item) return;
 
     regionStates = regionStates.filter(s => normalizeAbbr(s.state_abbr) !== cleanAbbr);
+
     pendingStateAssignments[cleanAbbr] = {
       region_id: null,
       state_abbr: cleanAbbr,
@@ -537,9 +567,10 @@
       remove: true
     };
 
+    renderStateDropdown();
     renderSelectedRegion();
     drawMap();
-    showSuccess(`${cleanAbbr} unassigned locally. Press Save State Assignments to commit.`);
+    showSuccess(`${cleanAbbr} removed locally. Press Save State Assignments to commit.`);
   }
 
   async function saveStateAssignments() {
@@ -674,14 +705,12 @@
   async function saveSelectedRegion(id) {
     const box = document.querySelector(`[data-selected-region-id="${cssEscape(id)}"]`);
     if (!box) return;
-
     await updateRegionFromBox(id, box, "selected-region");
   }
 
   async function saveRegion(id) {
     const box = document.querySelector(`tr[data-region-id="${cssEscape(id)}"]`);
     if (!box) return;
-
     await updateRegionFromBox(id, box, "region");
   }
 
@@ -831,7 +860,9 @@
 
   function getFeatureName(f) {
     const p = f?.properties || {};
-    return p.NAME || p.name || p.STATE_NAME || p.state_name || getFeatureAbbr(f);
+    const abbr = getFeatureAbbr(f);
+    const found = allStates.find(([a]) => a === abbr);
+    return p.NAME || p.name || p.STATE_NAME || p.state_name || found?.[1] || abbr;
   }
 
   function normalizeAbbr(s) {
