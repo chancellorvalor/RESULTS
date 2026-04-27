@@ -28,7 +28,13 @@
     eventList: document.getElementById("event-list"),
 
     saveLaw: document.getElementById("save-law"),
-    lawList: document.getElementById("law-list")
+    lawList: document.getElementById("law-list"),
+
+    savePotusElection: document.getElementById("save-potus-election"),
+    potusElectionList: document.getElementById("potus-election-list"),
+
+    saveCongressElection: document.getElementById("save-congress-election"),
+    congressElectionList: document.getElementById("congress-election-list")
   };
 
   document.addEventListener("DOMContentLoaded", init);
@@ -36,7 +42,6 @@
   async function init() {
     const unlocked = setupLoginGate();
     if (!unlocked) return;
-
     wireEvents();
     await loadData();
   }
@@ -79,6 +84,8 @@
     els.saveEconomy.onclick = saveEconomy;
     els.saveEvent.onclick = saveEvent;
     els.saveLaw.onclick = saveLaw;
+    els.savePotusElection.onclick = savePotusElection;
+    els.saveCongressElection.onclick = saveCongressElection;
 
     els.tabs.forEach(btn => {
       btn.onclick = () => switchTab(btn.dataset.tab);
@@ -94,22 +101,28 @@
     try {
       hideBoxes();
 
-      const [presRes, ecoRes, eventsRes, lawsRes] = await Promise.all([
+      const [presRes, ecoRes, eventsRes, lawsRes, potusRes, congressRes] = await Promise.all([
         supabase.from("president_entries").select("*").order("display_order", { ascending: true }),
         supabase.from("economy_snapshots").select("*").order("year", { ascending: false }).order("month", { ascending: false }),
         supabase.from("timeline_events").select("*").order("year", { ascending: false }).order("month", { ascending: false }).order("day", { ascending: false }),
-        supabase.from("laws").select("*").order("year", { ascending: false })
+        supabase.from("laws").select("*").order("year", { ascending: false }),
+        supabase.from("potus_election_archives").select("*").order("year", { ascending: false }),
+        supabase.from("congress_election_archives").select("*").order("year", { ascending: false })
       ]);
 
-      if (presRes.error) throw presRes.error;
-      if (ecoRes.error) throw ecoRes.error;
-      if (eventsRes.error) throw eventsRes.error;
-      if (lawsRes.error) throw lawsRes.error;
+      throwIf(presRes);
+      throwIf(ecoRes);
+      throwIf(eventsRes);
+      throwIf(lawsRes);
+      throwIf(potusRes);
+      throwIf(congressRes);
 
       renderPresidents(presRes.data || []);
       renderEconomy(ecoRes.data || []);
       renderEvents(eventsRes.data || []);
       renderLaws(lawsRes.data || []);
+      renderPotusElections(potusRes.data || []);
+      renderCongressElections(congressRes.data || []);
 
       showSuccess("Archive data loaded.");
     } catch (err) {
@@ -145,14 +158,11 @@
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
-        .from("president_entries")
-        .upsert(payload, { onConflict: "slug" });
-
+      const { error } = await supabase.from("president_entries").upsert(payload, { onConflict: "slug" });
       if (error) throw error;
 
       showSuccess("President saved.");
-      clearPresidentForm();
+      clearFields(["pres-number","pres-slug","pres-name","pres-party","pres-ideology","pres-term-start","pres-term-end","pres-vp","pres-first-lady","pres-portrait","pres-status","pres-summary","pres-full","pres-accomplishments","pres-scandals"]);
       await loadData();
     } catch (err) {
       showError("Could not save president. " + (err.message || err));
@@ -176,23 +186,17 @@
         debt: numberOrNull("eco-debt"),
         deficit: numberOrNull("eco-deficit"),
         summary: val("eco-summary"),
+        chart_json: parseJsonField("eco-chart-json"),
         updated_at: new Date().toISOString()
       };
 
       if (!payload.year) throw new Error("Economy year is required.");
 
-      if (payload.is_current) {
-        await supabase
-          .from("economy_snapshots")
-          .update({ is_current: false })
-          .eq("period_type", "current");
-      }
-
       const { error } = await supabase.from("economy_snapshots").insert(payload);
       if (error) throw error;
 
       showSuccess("Economy snapshot saved.");
-      clearEconomyForm();
+      clearFields(["eco-period-type","eco-year","eco-month","eco-label","eco-current","eco-gdp","eco-growth","eco-unemployment","eco-inflation","eco-debt","eco-deficit","eco-summary","eco-chart-json"]);
       await loadData();
     } catch (err) {
       showError("Could not save economy snapshot. " + (err.message || err));
@@ -221,14 +225,11 @@
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
-        .from("timeline_events")
-        .upsert(payload, { onConflict: "slug" });
-
+      const { error } = await supabase.from("timeline_events").upsert(payload, { onConflict: "slug" });
       if (error) throw error;
 
       showSuccess("Timeline event saved.");
-      clearEventForm();
+      clearFields(["event-title","event-slug","event-year","event-month","event-day","event-date-label","event-category","event-importance","event-summary","event-body"]);
       await loadData();
     } catch (err) {
       showError("Could not save event. " + (err.message || err));
@@ -260,10 +261,81 @@
       if (error) throw error;
 
       showSuccess("Law saved.");
-      clearLawForm();
+      clearFields(["law-title","law-short","law-citation","law-author","law-subject","law-funding","law-date","law-year","law-link","law-status","law-summary"]);
       await loadData();
     } catch (err) {
       showError("Could not save law. " + (err.message || err));
+    }
+  }
+
+  async function savePotusElection() {
+    try {
+      hideBoxes();
+
+      const slug = val("potus-slug");
+      if (!slug) throw new Error("POTUS election slug is required.");
+      if (!val("potus-title")) throw new Error("POTUS election title is required.");
+
+      const payload = {
+        slug,
+        year: numberOrNull("potus-year"),
+        title: val("potus-title"),
+        winner_name: val("potus-winner-name"),
+        winner_party: val("potus-winner-party"),
+        winner_ev: numberOrNull("potus-winner-ev") || 0,
+        runner_up_name: val("potus-runner-name"),
+        runner_up_party: val("potus-runner-party"),
+        runner_up_ev: numberOrNull("potus-runner-ev") || 0,
+        popular_vote_summary: val("potus-popular-summary"),
+        map_url: val("potus-map-url"),
+        summary: val("potus-summary"),
+        state_results_json: parseJsonField("potus-state-json"),
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase.from("potus_election_archives").upsert(payload, { onConflict: "slug" });
+      if (error) throw error;
+
+      showSuccess("POTUS election archive saved.");
+      clearFields(["potus-slug","potus-year","potus-title","potus-winner-name","potus-winner-party","potus-winner-ev","potus-runner-name","potus-runner-party","potus-runner-ev","potus-popular-summary","potus-map-url","potus-summary","potus-state-json"]);
+      await loadData();
+    } catch (err) {
+      showError("Could not save POTUS election. " + (err.message || err));
+    }
+  }
+
+  async function saveCongressElection() {
+    try {
+      hideBoxes();
+
+      const slug = val("cong-slug");
+      if (!slug) throw new Error("Congress election slug is required.");
+      if (!val("cong-title")) throw new Error("Congress election title is required.");
+
+      const payload = {
+        slug,
+        year: numberOrNull("cong-year"),
+        title: val("cong-title"),
+        election_type: val("cong-type") || "midterm",
+        house_control: val("cong-house-control"),
+        senate_control: val("cong-senate-control"),
+        governor_control: val("cong-governor-control"),
+        house_summary: val("cong-house-summary"),
+        senate_summary: val("cong-senate-summary"),
+        map_url: val("cong-map-url"),
+        control_json: parseJsonField("cong-control-json"),
+        summary: val("cong-summary"),
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase.from("congress_election_archives").upsert(payload, { onConflict: "slug" });
+      if (error) throw error;
+
+      showSuccess("Congress election archive saved.");
+      clearFields(["cong-slug","cong-year","cong-title","cong-type","cong-house-control","cong-senate-control","cong-governor-control","cong-map-url","cong-house-summary","cong-senate-summary","cong-summary","cong-control-json"]);
+      await loadData();
+    } catch (err) {
+      showError("Could not save Congress election. " + (err.message || err));
     }
   }
 
@@ -280,7 +352,7 @@
     els.economyList.innerHTML = rows.map(e => `
       <div class="item-row">
         <strong>${esc(e.label || `${e.year}${e.month ? "-" + e.month : ""}`)}</strong>
-        <span>${esc(e.period_type)} • GDP ${money(e.gdp)} • Growth ${pct(e.gdp_growth)} • Unemployment ${pct(e.unemployment)}</span>
+        <span>${esc(e.period_type)} • GDP ${money(e.gdp)} • Growth ${pct(e.gdp_growth)} • Charts: ${chartCount(e.chart_json)}</span>
       </div>
     `).join("") || `<p class="muted">No economy snapshots yet.</p>`;
   }
@@ -303,46 +375,52 @@
     `).join("") || `<p class="muted">No laws yet.</p>`;
   }
 
-  function clearPresidentForm() {
-    [
-      "pres-number", "pres-slug", "pres-name", "pres-party", "pres-ideology",
-      "pres-term-start", "pres-term-end", "pres-vp", "pres-first-lady",
-      "pres-portrait", "pres-status", "pres-summary", "pres-full",
-      "pres-accomplishments", "pres-scandals"
-    ].forEach(id => setVal(id, ""));
+  function renderPotusElections(rows) {
+    els.potusElectionList.innerHTML = rows.map(e => `
+      <div class="item-row">
+        <strong>${esc(e.year)} — ${esc(e.title)}</strong>
+        <span>${esc(e.winner_name)} ${esc(e.winner_ev)} EV defeated ${esc(e.runner_up_name)} ${esc(e.runner_up_ev)} EV</span>
+      </div>
+    `).join("") || `<p class="muted">No POTUS election archives yet.</p>`;
   }
 
-  function clearEconomyForm() {
-    [
-      "eco-period-type", "eco-year", "eco-month", "eco-label", "eco-current",
-      "eco-gdp", "eco-growth", "eco-unemployment", "eco-inflation",
-      "eco-debt", "eco-deficit", "eco-summary"
-    ].forEach(id => setVal(id, ""));
+  function renderCongressElections(rows) {
+    els.congressElectionList.innerHTML = rows.map(e => `
+      <div class="item-row">
+        <strong>${esc(e.year)} — ${esc(e.title)}</strong>
+        <span>House: ${esc(e.house_control)} • Senate: ${esc(e.senate_control)} • Governors: ${esc(e.governor_control)}</span>
+      </div>
+    `).join("") || `<p class="muted">No Congress election archives yet.</p>`;
   }
 
-  function clearEventForm() {
-    [
-      "event-title", "event-slug", "event-year", "event-month", "event-day",
-      "event-date-label", "event-category", "event-importance",
-      "event-summary", "event-body"
-    ].forEach(id => setVal(id, ""));
+  function parseJsonField(id) {
+    const raw = val(id);
+    if (!raw) return {};
+    try {
+      return JSON.parse(raw);
+    } catch {
+      throw new Error(`${id} contains invalid JSON.`);
+    }
   }
 
-  function clearLawForm() {
-    [
-      "law-title", "law-short", "law-citation", "law-author", "law-subject",
-      "law-funding", "law-date", "law-year", "law-link", "law-status",
-      "law-summary"
-    ].forEach(id => setVal(id, ""));
+  function chartCount(chartJson) {
+    const charts = chartJson?.charts;
+    return Array.isArray(charts) ? charts.length : 0;
+  }
+
+  function throwIf(res) {
+    if (res.error) throw res.error;
+  }
+
+  function clearFields(ids) {
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
   }
 
   function val(id) {
     return document.getElementById(id)?.value?.trim() || "";
-  }
-
-  function setVal(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.value = value;
   }
 
   function numberOrNull(id) {
