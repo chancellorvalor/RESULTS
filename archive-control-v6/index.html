@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=1" />
+  <link rel="stylesheet" href="./styles.css?v=3" />
 </head>
 
 <body>
@@ -27,7 +27,7 @@
       <div>
         <p class="kicker">APRP ARCHIVE CONTROL</p>
         <h1>Archive Inputs</h1>
-        <p>Basic admin inputs for presidents, economy snapshots, timeline events, and laws.</p>
+        <p>Presidents, economy charts, timeline events, laws, POTUS elections, and congressional control archives.</p>
       </div>
       <button id="refresh-data">Refresh</button>
     </header>
@@ -40,12 +40,14 @@
       <button class="tab-btn" data-tab="economy">Economy</button>
       <button class="tab-btn" data-tab="timeline">Timeline</button>
       <button class="tab-btn" data-tab="laws">Laws</button>
+      <button class="tab-btn" data-tab="potus">POTUS Elections</button>
+      <button class="tab-btn" data-tab="congress">Congress Elections</button>
     </nav>
 
     <section id="tab-presidents" class="tab-panel active">
       <section class="card">
         <div class="section-head">
-          <h2>Add President</h2>
+          <h2>Add / Update President</h2>
           <button id="save-president">Save President</button>
         </div>
         <div class="grid">
@@ -72,7 +74,7 @@
     <section id="tab-economy" class="tab-panel">
       <section class="card">
         <div class="section-head">
-          <h2>Add Economy Snapshot</h2>
+          <h2>Add Economy Snapshot + Charts</h2>
           <button id="save-economy">Save Economy</button>
         </div>
         <div class="grid">
@@ -81,13 +83,15 @@
           <input id="eco-month" placeholder="Month">
           <input id="eco-label" placeholder="Label">
           <input id="eco-current" placeholder="is current? true/false">
-          <input id="eco-gdp" placeholder="GDP">
-          <input id="eco-growth" placeholder="GDP Growth">
-          <input id="eco-unemployment" placeholder="Unemployment">
-          <input id="eco-inflation" placeholder="Inflation">
-          <input id="eco-debt" placeholder="Debt">
-          <input id="eco-deficit" placeholder="Deficit">
+          <input id="eco-gdp" placeholder="GDP, billions">
+          <input id="eco-growth" placeholder="GDP Growth %">
+          <input id="eco-unemployment" placeholder="Unemployment %">
+          <input id="eco-inflation" placeholder="Inflation %">
+          <input id="eco-debt" placeholder="Debt, billions">
+          <input id="eco-deficit" placeholder="Deficit, billions">
           <textarea id="eco-summary" placeholder="Summary"></textarea>
+          <textarea id="eco-chart-json" class="json-box" placeholder='Chart JSON example:
+{"charts":[{"title":"GDP Growth","type":"line","unit":"%","points":[{"label":"Jan","value":2.1},{"label":"Feb","value":2.4}]}]}'></textarea>
         </div>
       </section>
       <section class="card"><div id="economy-list" class="list"></div></section>
@@ -137,10 +141,61 @@
       </section>
       <section class="card"><div id="law-list" class="list"></div></section>
     </section>
+
+    <section id="tab-potus" class="tab-panel">
+      <section class="card">
+        <div class="section-head">
+          <h2>Add POTUS Election Archive</h2>
+          <button id="save-potus-election">Save POTUS Election</button>
+        </div>
+        <div class="grid">
+          <input id="potus-slug" placeholder="slug, e.g. 2008-president">
+          <input id="potus-year" placeholder="Year">
+          <input id="potus-title" placeholder="Title">
+          <input id="potus-winner-name" placeholder="Winner name">
+          <input id="potus-winner-party" placeholder="Winner party">
+          <input id="potus-winner-ev" placeholder="Winner EV">
+          <input id="potus-runner-name" placeholder="Runner-up name">
+          <input id="potus-runner-party" placeholder="Runner-up party">
+          <input id="potus-runner-ev" placeholder="Runner-up EV">
+          <input id="potus-popular-summary" placeholder="Popular vote summary">
+          <input id="potus-map-url" placeholder="Map image URL">
+          <textarea id="potus-summary" placeholder="Election summary"></textarea>
+          <textarea id="potus-state-json" class="json-box" placeholder='State Results JSON example:
+{"states":[{"state":"Alabama","ev":9,"winner":"GOP","gop":54.9,"dem":42.1,"ind":3.0}]}'></textarea>
+        </div>
+      </section>
+      <section class="card"><div id="potus-election-list" class="list"></div></section>
+    </section>
+
+    <section id="tab-congress" class="tab-panel">
+      <section class="card">
+        <div class="section-head">
+          <h2>Add Congressional Election Archive</h2>
+          <button id="save-congress-election">Save Congress Election</button>
+        </div>
+        <div class="grid">
+          <input id="cong-slug" placeholder="slug, e.g. 2010-midterms">
+          <input id="cong-year" placeholder="Year">
+          <input id="cong-title" placeholder="Title">
+          <input id="cong-type" placeholder="midterm/presidential/special">
+          <input id="cong-house-control" placeholder="House control">
+          <input id="cong-senate-control" placeholder="Senate control">
+          <input id="cong-governor-control" placeholder="Governor control">
+          <input id="cong-map-url" placeholder="Map image URL">
+          <textarea id="cong-house-summary" placeholder="House summary"></textarea>
+          <textarea id="cong-senate-summary" placeholder="Senate summary"></textarea>
+          <textarea id="cong-summary" placeholder="Overall summary"></textarea>
+          <textarea id="cong-control-json" class="json-box" placeholder='Control JSON example:
+{"charts":[{"title":"House Control","type":"bar","points":[{"label":"DNC","value":230},{"label":"GOP","value":205}]}]}'></textarea>
+        </div>
+      </section>
+      <section class="card"><div id="congress-election-list" class="list"></div></section>
+    </section>
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=1"></script>
-  <script src="./app.js?v=1"></script>
+  <script src="../shared/config.js?v=3"></script>
+  <script src="./app.js?v=3"></script>
 </body>
 </html>
