@@ -3,27 +3,27 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>APRP Laws Archive</title>
+  <title>APRP Timeline Archive</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./archive.css?v=12" />
+  <link rel="stylesheet" href="./archive.css?v=13" />
 </head>
 
 <body>
   <header class="archive-header">
     <div>
-      <p class="kicker">APRP LAWS</p>
-      <h1>Laws Archive</h1>
-      <p class="subline">Signed bills, vetoes, citations, authors, subjects, funding, summaries, and bill links.</p>
+      <p class="kicker">APRP TIMELINE</p>
+      <h1>Timeline Archive</h1>
+      <p class="subline">Major events, crises, lore developments, administration actions, and historical canon entries.</p>
     </div>
 
     <nav class="top-links">
       <a href="./index.html">Live Results</a>
       <a href="./archive.html">Archive Hub</a>
-      <a href="./presidents.html">Presidents</a>
+      <a href="./hall-of-presidents.html">Hall of Presidents</a>
       <a href="./government.html">Government</a>
       <a href="./economy.html">Economy</a>
       <a href="./elections.html">Elections</a>
@@ -36,36 +36,36 @@
     <section id="error-box" class="error-box hidden"></section>
 
     <section class="hero-card">
-      <p class="kicker">LEGISLATIVE RECORD</p>
-      <h2 id="current-title">Signed Laws and Major Acts</h2>
+      <p class="kicker">CANON HISTORY</p>
+      <h2 id="current-title">Major Timeline Events</h2>
       <p id="current-summary">
-        Browse archived bills, laws, appropriations, vetoes, public-law citations, subjects, authors, summaries, and source links.
+        Browse archived APRP historical events, crises, government actions, elections, lore developments, and canon updates.
       </p>
 
       <div class="quick-buttons">
-        <a href="#laws">Law List</a>
+        <a href="#timeline">Timeline List</a>
         <a href="./archive.html">Back to Archive</a>
-        <a href="./timeline.html">Timeline</a>
-        <a href="./presidents.html">Presidents</a>
+        <a href="./laws.html">Laws</a>
+        <a href="./hall-of-presidents.html">Hall of Presidents</a>
       </div>
     </section>
 
-    <section id="laws" class="section-card">
+    <section id="timeline" class="section-card">
       <div class="section-head">
         <div>
-          <p class="kicker">LAW ARCHIVE</p>
-          <h2>Signed Laws and Major Acts</h2>
+          <p class="kicker">TIMELINE</p>
+          <h2>Major Timeline Events</h2>
         </div>
       </div>
 
-      <div id="law-list" class="mini-list">
-        <p class="muted">Loading laws...</p>
+      <div id="timeline-list" class="timeline-list">
+        <p class="muted">Loading timeline...</p>
       </div>
     </section>
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=12"></script>
-  <script src="./archive.js?v=12"></script>
+  <script src="../shared/config.js?v=13"></script>
+  <script src="./archive.js?v=13"></script>
 </body>
 </html>
