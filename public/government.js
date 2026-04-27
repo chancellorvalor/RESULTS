@@ -152,7 +152,8 @@
       els.modeDistrict?.addEventListener("click", () => setMapMode("district"));
       els.resetMap?.addEventListener("click", resetMapView);
 
-      console.log("Public government data loaded directly from gov_* tables:", data);
+      console.log("PUBLIC GOV DATA:", data);
+      console.log("PUBLIC GOV STATE DATA:", stateData);
     } catch (err) {
       showError("Could not load government data from gov_* tables. " + (err.message || err));
       console.error(err);
@@ -190,7 +191,7 @@
       districts: DEFAULT_DISTRICTS[region.name] || []
     }));
 
-    const regionStates = statesRes.data || [];
+    let regionStates = statesRes.data || [];
 
     if (!regionStates.length) {
       regions.forEach(region => {
@@ -218,18 +219,19 @@
     const output = {};
 
     data.regionStates.forEach(item => {
-      const region = findRegionById(item.region_id);
+      const region = findRegionById(item.region_id) || findRegionByName(item.region || item.region_name);
       if (!region) return;
 
       const stateName = item.state_name || STATE_ABBR[normalizeAbbr(item.state_abbr)] || item.state_abbr;
       const district = findDistrict(region, stateName);
-      const governor = data.governors.find(g => g.region_id === region.id) || null;
+
+      const governor = findGovernorForRegion(region);
 
       const senators = data.senate
-        .filter(s => s.region_id === region.id)
+        .filter(seat => isSeatInRegion(seat, region))
         .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
 
-      const representative = findRepresentative(region.id, district, stateName);
+      const representative = findRepresentative(region, district, stateName);
 
       output[stateName] = {
         stateName,
@@ -243,6 +245,29 @@
     });
 
     return output;
+  }
+
+  function findGovernorForRegion(region) {
+    if (!region) return null;
+
+    const match = data.governors.find(gov => {
+      const directRegionId = gov.region_id && String(gov.region_id) === String(region.id);
+      const regionName = same(gov.region, region.name) || same(gov.region_name, region.name);
+      const officeName = same(gov.office_name, region.name) || clean(gov.office_name).includes(clean(region.name));
+      const fallbackName = same(gov.name, region.name) || clean(gov.name).includes(clean(region.name));
+
+      return directRegionId || regionName || officeName || fallbackName;
+    });
+
+    return match || null;
+  }
+
+  function isSeatInRegion(seat, region) {
+    return (
+      String(seat.region_id || "") === String(region.id || "") ||
+      same(seat.region, region.name) ||
+      same(seat.region_name, region.name)
+    );
   }
 
   function findDistrict(region, stateName) {
@@ -267,17 +292,17 @@
     };
   }
 
-  function findRepresentative(regionId, district, stateName) {
+  function findRepresentative(region, district, stateName) {
     const districtCodes = String(district?.code || "")
       .split("/")
       .map(clean)
       .filter(Boolean);
 
     return data.house.find(seat => {
-      if (seat.region_id !== regionId) return false;
+      if (!isSeatInRegion(seat, region)) return false;
 
-      const code = clean(seat.district_code);
-      const area = clean(seat.district_area);
+      const code = clean(seat.district_code || seat.seat_name || seat.name);
+      const area = clean(seat.district_area || seat.district_name || seat.description);
       const state = clean(stateName);
 
       return districtCodes.includes(code) || area.includes(state);
@@ -383,7 +408,7 @@
   }
 
   async function loadStatesGeojson() {
-    const res = await fetch("./data/states.geojson?v=25");
+    const res = await fetch("./data/states.geojson?v=26");
     if (!res.ok) throw new Error("Could not load states.geojson.");
 
     const geojson = await res.json();
@@ -425,6 +450,33 @@
       return;
     }
 
+    const governorName = firstValue(details.governor, [
+      "governor_name",
+      "holder",
+      "filler_name",
+      "office_holder",
+      "incumbent",
+      "name"
+    ]);
+
+    const governorParty = firstValue(details.governor, [
+      "governor_party",
+      "party",
+      "filler_party"
+    ]);
+
+    const ltGovernorName = firstValue(details.governor, [
+      "lt_governor_name",
+      "lieutenant_governor",
+      "lt_governor",
+      "ltg"
+    ]);
+
+    const governorStatus = firstValue(details.governor, [
+      "status",
+      "vacancy_status"
+    ]);
+
     els.stateName.textContent = details.stateName;
     els.stateSummary.textContent = `${details.stateName} is assigned to ${details.region.name}. Its district is ${details.district.code} — ${details.district.label}.`;
 
@@ -432,23 +484,49 @@
     els.regionCycle.textContent = details.region.cycle_type || "—";
     els.district.textContent = `${details.district.code} — ${details.district.label}`;
 
-    els.governor.textContent = details.governor?.governor_name || "Vacant / Unassigned";
-    els.governorParty.textContent = details.governor?.governor_party || "—";
-    els.ltGovernor.textContent = details.governor?.lt_governor_name || "—";
-    els.governorStatus.textContent = prettyStatus(details.governor?.status);
+    els.governor.textContent = governorName || "Vacant / Unassigned";
+    els.governorParty.textContent = governorParty || "—";
+    els.ltGovernor.textContent = ltGovernorName || "—";
+    els.governorStatus.textContent = prettyStatus(governorStatus);
 
     els.senators.innerHTML = details.senators.length
-      ? details.senators.map(seat => `
-          <div class="gov-office-row">
-            <span>${esc(seat.seat_class || seat.custom_class || seat.seat_name || "Senate")}</span>
-            <strong>${esc(seat.filler_name || "Vacant / Unassigned")} ${seat.filler_party ? `(${esc(seat.filler_party)})` : ""}</strong>
-          </div>
-        `).join("")
+      ? details.senators.map(seat => {
+          const holder = firstValue(seat, ["filler_name", "holder", "senator", "office_holder", "incumbent", "name"]);
+          const party = firstValue(seat, ["filler_party", "party"]);
+          const seatLabel = firstValue(seat, ["seat_class", "custom_class", "seat_name"]) || "Senate";
+
+          return `
+            <div class="gov-office-row">
+              <span>${esc(seatLabel)}</span>
+              <strong>${esc(holder || "Vacant / Unassigned")} ${party ? `(${esc(party)})` : ""}</strong>
+            </div>
+          `;
+        }).join("")
       : `<div class="gov-office-row"><span>Senators</span><strong>Vacant / Unassigned</strong></div>`;
 
-    els.representative.textContent = details.representative?.filler_name || "Vacant / Unassigned";
-    els.representativeParty.textContent = details.representative?.filler_party || "—";
-    els.representativeStatus.textContent = prettyStatus(details.representative?.status);
+    const representativeName = firstValue(details.representative, [
+      "filler_name",
+      "holder",
+      "representative",
+      "rep",
+      "office_holder",
+      "incumbent",
+      "name"
+    ]);
+
+    const representativeParty = firstValue(details.representative, [
+      "filler_party",
+      "party"
+    ]);
+
+    const representativeStatus = firstValue(details.representative, [
+      "status",
+      "vacancy_status"
+    ]);
+
+    els.representative.textContent = representativeName || "Vacant / Unassigned";
+    els.representativeParty.textContent = representativeParty || "—";
+    els.representativeStatus.textContent = prettyStatus(representativeStatus);
   }
 
   function setMapMode(mode) {
@@ -513,7 +591,7 @@
 
     els.directory.innerHTML = data.regions.map(region => {
       const states = data.regionStates
-        .filter(item => item.region_id === region.id)
+        .filter(item => String(item.region_id || "") === String(region.id || ""))
         .map(item => item.state_name || STATE_ABBR[normalizeAbbr(item.state_abbr)] || item.state_abbr)
         .filter(Boolean);
 
@@ -535,28 +613,35 @@
     if (!els.governmentList) return;
 
     els.governmentList.innerHTML = data.regions.map(region => {
-      const governor = data.governors.find(g => g.region_id === region.id);
-      const senators = data.senate.filter(s => s.region_id === region.id);
-      const house = data.house.filter(h => h.region_id === region.id);
+      const governor = findGovernorForRegion(region);
+      const senators = data.senate.filter(s => isSeatInRegion(s, region));
+      const house = data.house.filter(h => isSeatInRegion(h, region));
+
+      const governorName = firstValue(governor, ["governor_name", "holder", "filler_name", "office_holder", "incumbent", "name"]);
+      const governorParty = firstValue(governor, ["governor_party", "party", "filler_party"]);
 
       return `
         <article class="record-card">
           <h3>${esc(region.name)} Government</h3>
           <div class="record-meta">
             <span class="pill">${esc(region.cycle_type || "—")} Cycle</span>
-            <span class="pill">${esc(data.regionStates.filter(s => s.region_id === region.id).length)} States</span>
+            <span class="pill">${esc(data.regionStates.filter(s => String(s.region_id) === String(region.id)).length)} States</span>
             <span class="pill">${esc((region.districts || []).length)} Districts</span>
           </div>
-          <p><strong>Governor:</strong> ${esc(governor?.governor_name || "Vacant / Unassigned")} ${governor?.governor_party ? `(${esc(governor.governor_party)})` : ""}</p>
-          <p><strong>Senate:</strong> ${esc(senators.map(s => `${s.seat_name} — ${s.filler_name || "Vacant"} (${s.filler_party || "—"})`).join(" | ") || "Vacant / Unassigned")}</p>
-          <p><strong>House:</strong> ${esc(house.map(h => `${h.district_code} — ${h.filler_name || "Vacant"} (${h.filler_party || "—"})`).join(" | ") || "Vacant / Unassigned")}</p>
+          <p><strong>Governor:</strong> ${esc(governorName || "Vacant / Unassigned")} ${governorParty ? `(${esc(governorParty)})` : ""}</p>
+          <p><strong>Senate:</strong> ${esc(senators.map(s => `${s.seat_name} — ${firstValue(s, ["filler_name", "holder", "senator", "name"]) || "Vacant"} (${firstValue(s, ["filler_party", "party"]) || "—"})`).join(" | ") || "Vacant / Unassigned")}</p>
+          <p><strong>House:</strong> ${esc(house.map(h => `${h.district_code} — ${firstValue(h, ["filler_name", "holder", "representative", "name"]) || "Vacant"} (${firstValue(h, ["filler_party", "party"]) || "—"})`).join(" | ") || "Vacant / Unassigned")}</p>
         </article>
       `;
     }).join("");
   }
 
   function findRegionById(id) {
-    return data.regions.find(region => region.id === id);
+    return data.regions.find(region => String(region.id || "") === String(id || ""));
+  }
+
+  function findRegionByName(name) {
+    return data.regions.find(region => same(region.name, name));
   }
 
   function getFeatureStateName(feature) {
@@ -578,6 +663,18 @@
     return String(value)
       .replace(/_/g, " ")
       .replace(/\b\w/g, m => m.toUpperCase());
+  }
+
+  function firstValue(obj, keys) {
+    if (!obj) return "";
+
+    for (const key of keys) {
+      if (obj[key] !== undefined && obj[key] !== null && String(obj[key]).trim() !== "") {
+        return String(obj[key]).trim();
+      }
+    }
+
+    return "";
   }
 
   function same(a, b) {
