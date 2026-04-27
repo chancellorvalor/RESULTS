@@ -37,32 +37,41 @@
 
     if (!supabase) {
       showError("Supabase config is missing. Check shared/config.js.");
+      renderFallbackPage();
       return;
     }
 
     try {
-      const [
-        hubMeta,
-        hubSchedule,
-        presidents,
-        economy,
-        timeline,
-        laws
-      ] = await Promise.all([
-        getSetting("hub_meta", {
-          kicker: "APRP ARCHIVES",
-          title: "American Political Roleplay Archive",
-          summary: "Government, elections, economy, presidents, events, laws, and timeline records.",
-          heroTitle: "APRP Archive",
-          heroDescription: "Government, elections, economy, presidents, events, laws, and timeline records.",
-          cycleLabel: "ACTIVE CYCLE"
-        }),
-        getSetting("hub_schedule", []),
-        fetchRows(TABLES.presidents, { orderBy: "president_number", ascending: false }),
-        fetchRows(TABLES.economy, { orderBy: "year", ascending: false }),
-        fetchRows(TABLES.timeline, { orderBy: "year", ascending: false }),
-        fetchRows(TABLES.laws, { orderBy: "year", ascending: false })
-      ]);
+      const hubMeta = await getSetting("hub_meta", {
+        kicker: "APRP ARCHIVES",
+        title: "American Political Roleplay Archive",
+        summary: "Government, elections, economy, presidents, events, laws, and timeline records.",
+        heroTitle: "APRP Archive",
+        heroDescription: "Government, elections, economy, presidents, events, laws, and timeline records.",
+        cycleLabel: "ACTIVE CYCLE"
+      });
+
+      const hubSchedule = await getSetting("hub_schedule", []);
+
+      const presidents = await fetchRowsSafe(TABLES.presidents, {
+        orderBy: "president_number",
+        ascending: false
+      });
+
+      const economy = await fetchRowsSafe(TABLES.economy, {
+        orderBy: "year",
+        ascending: false
+      });
+
+      const timeline = await fetchRowsSafe(TABLES.timeline, {
+        orderBy: "year",
+        ascending: false
+      });
+
+      const laws = await fetchRowsSafe(TABLES.laws, {
+        orderBy: "year",
+        ascending: false
+      });
 
       const currentEconomy = pickCurrentEconomy(economy);
       const latestPresident = presidents[0] || null;
@@ -78,52 +87,101 @@
     } catch (error) {
       console.error(error);
       showError(`Could not load archive hub data. ${error.message || error}`);
+      renderFallbackPage();
     }
   }
 
   async function getSetting(key, fallbackValue) {
-    const { data, error } = await supabase
-      .from(TABLES.settings)
-      .select("setting_value")
-      .eq("setting_key", key)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.settings)
+        .select("setting_value")
+        .eq("setting_key", key)
+        .maybeSingle();
 
-    if (error) {
-      if (/does not exist/i.test(error.message || "")) {
-        return fallbackValue;
+      if (error) {
+        if (isMissingTableError(error)) return fallbackValue;
+        throw error;
       }
+
+      return data?.setting_value ?? fallbackValue;
+    } catch (error) {
+      if (isMissingTableError(error)) return fallbackValue;
       throw error;
     }
-
-    return data?.setting_value ?? fallbackValue;
   }
 
-  async function fetchRows(table, options = {}) {
-    let query = supabase.from(table).select("*");
+  async function fetchRowsSafe(table, options = {}) {
+    try {
+      let query = supabase.from(table).select("*");
 
-    if (options.orderBy) {
-      query = query.order(options.orderBy, { ascending: !!options.ascending });
-    }
+      if (options.orderBy) {
+        query = query.order(options.orderBy, {
+          ascending: !!options.ascending
+        });
+      }
 
-    const { data, error } = await query;
+      const { data, error } = await query;
 
-    if (error) {
-      if (/does not exist/i.test(error.message || "")) {
+      if (error) {
+        if (isMissingTableError(error)) {
+          console.warn(`Archive table missing, skipping: ${table}`, error.message);
+          return [];
+        }
+
+        throw error;
+      }
+
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      if (isMissingTableError(error)) {
+        console.warn(`Archive table missing, skipping: ${table}`, error.message || error);
         return [];
       }
+
       throw error;
     }
+  }
 
-    return Array.isArray(data) ? data : [];
+  function isMissingTableError(error) {
+    const msg = String(error?.message || error || "").toLowerCase();
+    const code = String(error?.code || "").toLowerCase();
+
+    return (
+      code === "42p01" ||
+      code === "pgrst205" ||
+      msg.includes("does not exist") ||
+      msg.includes("could not find the table") ||
+      msg.includes("schema cache") ||
+      msg.includes("relation") && msg.includes("does not exist")
+    );
+  }
+
+  function renderFallbackPage() {
+    renderHubMeta({
+      kicker: "APRP ARCHIVES",
+      title: "American Political Roleplay Archive",
+      summary: "Government, elections, economy, presidents, events, laws, and timeline records.",
+      heroTitle: "APRP Archive",
+      heroDescription: "Government, elections, economy, presidents, events, laws, and timeline records.",
+      cycleLabel: "ACTIVE CYCLE"
+    });
+
+    renderSchedule([]);
+    renderMacroStats(null);
+    renderRecentEvents([]);
+    renderPresidentFeature(null, 0);
+    renderEconomyFeature(null, 0);
+    renderTimelineFeature(null, 0, 0);
   }
 
   function renderHubMeta(meta) {
-    els.hubKicker.textContent = meta?.kicker || "APRP ARCHIVES";
-    els.hubTitle.textContent = meta?.title || "American Political Roleplay Archive";
-    els.hubSummary.textContent = meta?.summary || "Government, elections, economy, presidents, events, laws, and timeline records.";
-    els.heroTitle.textContent = meta?.heroTitle || "APRP Archive";
-    els.heroDescription.textContent = meta?.heroDescription || "Government, elections, economy, presidents, events, laws, and timeline records.";
-    els.cycleLabel.textContent = meta?.cycleLabel || "ACTIVE CYCLE";
+    if (els.hubKicker) els.hubKicker.textContent = meta?.kicker || "APRP ARCHIVES";
+    if (els.hubTitle) els.hubTitle.textContent = meta?.title || "American Political Roleplay Archive";
+    if (els.hubSummary) els.hubSummary.textContent = meta?.summary || "Government, elections, economy, presidents, events, laws, and timeline records.";
+    if (els.heroTitle) els.heroTitle.textContent = meta?.heroTitle || "APRP Archive";
+    if (els.heroDescription) els.heroDescription.textContent = meta?.heroDescription || "Government, elections, economy, presidents, events, laws, and timeline records.";
+    if (els.cycleLabel) els.cycleLabel.textContent = meta?.cycleLabel || "ACTIVE CYCLE";
   }
 
   function renderSchedule(schedule) {
@@ -349,9 +407,11 @@
   function buildEconomyLabel(row) {
     if (!row) return "";
     if (row.label) return row.label;
+
     if (row.period_type === "monthly") {
       return `${row.year || ""} / Month ${row.month || ""}`;
     }
+
     return row.year ? `Year ${row.year}` : "Economy Snapshot";
   }
 
@@ -368,20 +428,25 @@
 
   function formatBillions(value) {
     if (value === null || value === undefined || value === "") return "—";
+
     const num = Number(value);
     if (Number.isNaN(num)) return String(value);
+
     return `$${num.toLocaleString()}B`;
   }
 
   function formatPercent(value) {
     if (value === null || value === undefined || value === "") return "—";
+
     const num = Number(value);
     if (Number.isNaN(num)) return `${value}%`;
+
     return `${num.toFixed(1)}%`;
   }
 
   function showError(message) {
     if (!els.errorBox) return;
+
     els.errorBox.textContent = message;
     els.errorBox.classList.remove("hidden");
   }
