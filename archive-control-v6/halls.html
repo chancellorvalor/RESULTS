@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Archive Control | Hall Editor</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./halls.css?v=1" />
+</head>
+<body>
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <p class="kicker">ARCHIVE CONTROL</p>
+      <h1>Hall Editor Login</h1>
+      <p>Enter the access code to continue.</p>
+
+      <div class="login-row">
+        <input id="access-code" type="password" placeholder="Access code">
+        <button id="unlock-btn" type="button">Unlock</button>
+      </div>
+
+      <div id="login-error" class="login-error hidden">Invalid code.</div>
+    </div>
+  </div>
+
+  <div id="app-shell" class="app-shell hidden">
+    <header class="page-header">
+      <div>
+        <p class="kicker">APRP ARCHIVE CONTROL</p>
+        <h1>Hall of Presidents Editor</h1>
+        <p class="subline">Create, edit, delete, and reorder previous administrations at any time.</p>
+      </div>
+
+      <nav class="page-actions">
+        <a class="ghost-btn" href="../public/hall-of-presidents.html" target="_blank">Open Public Hall</a>
+        <a class="ghost-btn" href="./index.html">Archive Control Home</a>
+      </nav>
+    </header>
+
+    <main class="editor-layout">
+      <aside class="sidebar">
+        <div class="sidebar-head">
+          <h2>Presidents</h2>
+          <button id="create-president-btn" class="primary-btn" type="button">Create President</button>
+        </div>
+
+        <div id="president-list" class="president-list"></div>
+      </aside>
+
+      <section class="editor-panel">
+        <section class="toolbar">
+          <div class="toolbar-left">
+            <span id="status-pill" class="status-pill">Ready</span>
+          </div>
+
+          <div class="toolbar-right">
+            <button id="duplicate-btn" class="ghost-btn" type="button">Duplicate</button>
+            <button id="delete-btn" class="danger-btn" type="button">Delete</button>
+            <button id="save-btn" class="primary-btn" type="button">Save President</button>
+          </div>
+        </section>
+
+        <section class="form-card">
+          <div class="section-head">
+            <h3>Basic Information</h3>
+          </div>
+
+          <div class="form-grid three">
+            <label>
+              <span>Full Name</span>
+              <input id="full_name" type="text">
+            </label>
+
+            <label>
+              <span>Slug</span>
+              <input id="slug" type="text">
+            </label>
+
+            <label>
+              <span>President Number</span>
+              <input id="president_number" type="number">
+            </label>
+
+            <label>
+              <span>Party</span>
+              <input id="party" type="text" placeholder="Democratic Party">
+            </label>
+
+            <label>
+              <span>Party Short</span>
+              <input id="party_short" type="text" placeholder="DNC / GOP / IND">
+            </label>
+
+            <label>
+              <span>Portrait URL</span>
+              <input id="portrait_url" type="text">
+            </label>
+
+            <label>
+              <span>Term Start</span>
+              <input id="term_start" type="date">
+            </label>
+
+            <label>
+              <span>Term End</span>
+              <input id="term_end" type="date">
+            </label>
+
+            <label>
+              <span>Display Order</span>
+              <input id="display_order" type="number">
+            </label>
+
+            <label>
+              <span>Vice President</span>
+              <input id="vice_president" type="text">
+            </label>
+
+            <label>
+              <span>First Lady / Spouse</span>
+              <input id="first_lady" type="text">
+            </label>
+
+            <label>
+              <span>Ideology</span>
+              <input id="ideology" type="text">
+            </label>
+
+            <label>
+              <span>Home State</span>
+              <input id="home_state" type="text">
+            </label>
+
+            <label>
+              <span>Date of Birth</span>
+              <input id="date_of_birth" type="date">
+            </label>
+
+            <label class="span-2">
+              <span>Place of Birth</span>
+              <input id="place_of_birth" type="text">
+            </label>
+          </div>
+        </section>
+
+        <section class="form-card">
+          <div class="section-head">
+            <h3>Profile Content</h3>
+          </div>
+
+          <div class="form-grid one">
+            <label>
+              <span>Short Summary</span>
+              <textarea id="short_summary" rows="3"></textarea>
+            </label>
+
+            <label>
+              <span>Full Summary</span>
+              <textarea id="full_summary" rows="8"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-card">
+          <div class="section-head">
+            <h3>Biography Fields</h3>
+          </div>
+
+          <div class="form-grid two">
+            <label>
+              <span>Education (one per line)</span>
+              <textarea id="education" rows="6"></textarea>
+            </label>
+
+            <label>
+              <span>Previous Offices (one per line)</span>
+              <textarea id="previous_offices" rows="6"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-card">
+          <div class="section-head">
+            <h3>Political / Archive Sections</h3>
+          </div>
+
+          <div class="form-grid two">
+            <label>
+              <span>Top Actions (one per line)</span>
+              <textarea id="top_actions" rows="8"></textarea>
+            </label>
+
+            <label>
+              <span>Accomplishments (one per line)</span>
+              <textarea id="accomplishments" rows="8"></textarea>
+            </label>
+
+            <label class="span-2">
+              <span>Scandals / Criticisms (one per line)</span>
+              <textarea id="scandals" rows="8"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-card">
+          <div class="section-head">
+            <h3>Key Events & Crises</h3>
+            <button id="add-event-btn" class="ghost-btn" type="button">Add Event</button>
+          </div>
+
+          <div id="events-editor" class="stack-list"></div>
+        </section>
+
+        <section class="form-card">
+          <div class="section-head">
+            <h3>Presidency Timeline</h3>
+            <button id="add-timeline-btn" class="ghost-btn" type="button">Add Timeline Item</button>
+          </div>
+
+          <div id="timeline-editor" class="stack-list"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="../shared/config.js?v=1"></script>
+  <script src="./halls.js?v=1"></script>
+</body>
+</html>
