@@ -3,69 +3,67 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>APRP Hall of Presidents</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <title>Redirecting to Hall of Presidents...</title>
 
-  <link rel="stylesheet" href="./archive.css?v=12" />
+  <meta http-equiv="refresh" content="0; url=./hall-of-presidents.html" />
+
+  <link rel="canonical" href="./hall-of-presidents.html" />
+
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #020817;
+      color: #f8fafc;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .card {
+      width: min(520px, calc(100% - 32px));
+      padding: 28px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(8,18,38,.98), rgba(6,14,29,.98));
+      border: 1px solid rgba(148,163,184,.18);
+      box-shadow: 0 18px 50px rgba(0,0,0,.35);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    p {
+      margin: 0 0 18px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    a {
+      display: inline-flex;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: #3b82f6;
+      color: white;
+      font-weight: 800;
+      text-decoration: none;
+    }
+  </style>
 </head>
 
 <body>
-  <header class="archive-header">
-    <div>
-      <p class="kicker">APRP PRESIDENTS</p>
-      <h1>Hall of Presidents</h1>
-      <p class="subline">Presidential portraits, terms, parties, vice presidents, first ladies, ideology, summaries, accomplishments, and scandals.</p>
-    </div>
-
-    <nav class="top-links">
-      <a href="./index.html">Live Results</a>
-      <a href="./archive.html">Archive Hub</a>
-      <a href="./presidents.html">Presidents</a>
-      <a href="./government.html">Government</a>
-      <a href="./economy.html">Economy</a>
-      <a href="./elections.html">Elections</a>
-      <a href="./timeline.html">Timeline</a>
-      <a href="./laws.html">Laws</a>
-    </nav>
-  </header>
-
-  <main class="archive-shell">
-    <section id="error-box" class="error-box hidden"></section>
-
-    <section class="hero-card">
-      <p class="kicker">EXECUTIVE HISTORY</p>
-      <h2 id="current-title">Presidential Directory</h2>
-      <p id="current-summary">
-        Browse every archived APRP president and administration record from the archive backend.
-      </p>
-
-      <div class="quick-buttons">
-        <a href="#presidents">President List</a>
-        <a href="./archive.html">Back to Archive</a>
-        <a href="./government.html">Government</a>
-        <a href="./elections.html">Election Archives</a>
-      </div>
-    </section>
-
-    <section id="presidents" class="section-card">
-      <div class="section-head">
-        <div>
-          <p class="kicker">HALL</p>
-          <h2>Presidents</h2>
-        </div>
-      </div>
-
-      <div id="president-list" class="president-grid">
-        <p class="muted">Loading presidents...</p>
-      </div>
-    </section>
+  <main class="card">
+    <h1>Redirecting...</h1>
+    <p>The Presidents page has moved to the new Hall of Presidents.</p>
+    <a href="./hall-of-presidents.html">Open Hall of Presidents</a>
   </main>
 
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=12"></script>
-  <script src="./archive.js?v=12"></script>
+  <script>
+    window.location.replace("./hall-of-presidents.html");
+  </script>
 </body>
 </html>
