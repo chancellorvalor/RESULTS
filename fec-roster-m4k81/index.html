@@ -9,7 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./styles.css?v=1" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css?v=2" />
 </head>
 
 <body>
@@ -18,7 +19,7 @@
       <div>
         <p class="kicker">APRP FEC ROSTER CONTROL</p>
         <h1>Government Roster</h1>
-        <p>Update regions, governors, senators, and representatives only.</p>
+        <p>Update regions, state assignments, governors, senators, and representatives only.</p>
       </div>
 
       <div class="actions">
@@ -29,53 +30,213 @@
     <section id="error-box" class="error-box hidden"></section>
     <section id="success-box" class="success-box hidden"></section>
 
-    <section class="card">
-      <div class="section-head">
-        <div>
-          <h2>Regions</h2>
-          <p>Each state belongs to one APRP region. Clicking a state on the public government map will show that region.</p>
-        </div>
-      </div>
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="regions">Regions / Map</button>
+      <button class="tab-btn" data-tab="senate">Senate</button>
+      <button class="tab-btn" data-tab="governors">Governors</button>
+      <button class="tab-btn" data-tab="house">House</button>
+    </nav>
 
-      <div id="regions-wrap" class="region-grid"></div>
+    <section id="tab-regions" class="tab-panel active">
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <h2>Regions & State Map</h2>
+            <p>Create regions, assign states, edit colors, and click states on the map to move them.</p>
+          </div>
+
+          <div class="head-actions">
+            <button id="create-region">Create Region</button>
+            <button id="save-state-assignments" class="secondary">Save State Assignments</button>
+          </div>
+        </div>
+
+        <div class="region-map-layout">
+          <aside class="region-editor">
+            <div class="mini-head">
+              <h3>Selected Region</h3>
+              <p>Choose a region, then click states on the map to assign them.</p>
+            </div>
+
+            <label>
+              Region
+              <select id="selected-region"></select>
+            </label>
+
+            <div id="selected-region-editor" class="selected-region-editor"></div>
+
+            <div class="mini-head state-list-head">
+              <h3>States in Region</h3>
+              <p>These states currently belong to the selected region.</p>
+            </div>
+
+            <div id="selected-region-states" class="state-chip-list"></div>
+          </aside>
+
+          <section class="map-panel">
+            <div class="map-toolbar">
+              <div>
+                <strong>Region Map</strong>
+                <span>Click a state to assign it to the selected region.</span>
+              </div>
+              <button id="reset-map" class="secondary">Reset map</button>
+            </div>
+
+            <div id="region-map" class="region-map"></div>
+
+            <div id="map-legend" class="map-legend"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-head compact">
+          <div>
+            <h2>All Regions</h2>
+            <p>Compact editor for every region.</p>
+          </div>
+        </div>
+
+        <div class="compact-table-wrap">
+          <table class="compact-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Cycle</th>
+                <th>Map Label</th>
+                <th>Color</th>
+                <th>Order</th>
+                <th>Active</th>
+                <th>Save</th>
+              </tr>
+            </thead>
+            <tbody id="regions-table"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
 
-    <section class="card">
-      <div class="section-head">
-        <div>
-          <h2>Senate Seats</h2>
-          <p>Set seat name, class, filler, party, term, and vacancy status.</p>
-        </div>
-      </div>
+    <section id="tab-senate" class="tab-panel">
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <h2>Senate Seats</h2>
+            <p>Compact rows. Set seat name, class, filler, party, term, and vacancy status.</p>
+          </div>
 
-      <div id="senate-wrap" class="office-wrap"></div>
+          <div class="head-actions">
+            <button id="add-senate-seat">Add Senate Seat</button>
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <label>
+            Filter Region
+            <select id="senate-region-filter"></select>
+          </label>
+        </div>
+
+        <div class="compact-table-wrap">
+          <table class="compact-table roster-table">
+            <thead>
+              <tr>
+                <th>Region</th>
+                <th>Seat Name</th>
+                <th>Class</th>
+                <th>Custom Class</th>
+                <th>Filler</th>
+                <th>Party</th>
+                <th>Term Start</th>
+                <th>Term End</th>
+                <th>Status</th>
+                <th>Order</th>
+                <th>Save</th>
+              </tr>
+            </thead>
+            <tbody id="senate-table"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
 
-    <section class="card">
-      <div class="section-head">
-        <div>
-          <h2>Governors</h2>
-          <p>Set governor, party, lieutenant governor, term, and vacancy status.</p>
+    <section id="tab-governors" class="tab-panel">
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <h2>Governors</h2>
+            <p>Set governor, party, lieutenant governor, term, and vacancy status.</p>
+          </div>
         </div>
-      </div>
 
-      <div id="governor-wrap" class="office-wrap"></div>
+        <div class="compact-table-wrap">
+          <table class="compact-table roster-table">
+            <thead>
+              <tr>
+                <th>Region</th>
+                <th>Office</th>
+                <th>Governor</th>
+                <th>Party</th>
+                <th>Lt. Gov</th>
+                <th>Lt. Party</th>
+                <th>Term Start</th>
+                <th>Term End</th>
+                <th>Status</th>
+                <th>Save</th>
+              </tr>
+            </thead>
+            <tbody id="governor-table"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
 
-    <section class="card">
-      <div class="section-head">
-        <div>
-          <h2>House Seats</h2>
-          <p>Set district holder, party, term, and vacancy status.</p>
-        </div>
-      </div>
+    <section id="tab-house" class="tab-panel">
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <h2>House Seats</h2>
+            <p>Compact rows for district, area, holder, party, term, and status.</p>
+          </div>
 
-      <div id="house-wrap" class="office-wrap"></div>
+          <div class="head-actions">
+            <button id="add-house-seat">Add House Seat</button>
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <label>
+            Filter Region
+            <select id="house-region-filter"></select>
+          </label>
+        </div>
+
+        <div class="compact-table-wrap">
+          <table class="compact-table roster-table">
+            <thead>
+              <tr>
+                <th>Region</th>
+                <th>District</th>
+                <th>Area</th>
+                <th>Filler</th>
+                <th>Party</th>
+                <th>Term Start</th>
+                <th>Term End</th>
+                <th>Status</th>
+                <th>Order</th>
+                <th>Save</th>
+              </tr>
+            </thead>
+            <tbody id="house-table"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
   </main>
 
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=1"></script>
-  <script src="./app.js?v=1"></script>
+  <script src="../shared/config.js?v=2"></script>
+  <script src="./app.js?v=2"></script>
 </body>
 </html>
