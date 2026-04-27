@@ -17,6 +17,7 @@
     stateToAssign: document.getElementById("state-to-assign"),
     assignStateDropdown: document.getElementById("assign-state-dropdown"),
     saveStateAssignments: document.getElementById("save-state-assignments"),
+    deleteSelectedRegion: document.getElementById("delete-selected-region"),
     resetMap: document.getElementById("reset-map"),
     legend: document.getElementById("map-legend"),
     regionsTable: document.getElementById("regions-table"),
@@ -78,6 +79,7 @@
     els.createRegion.onclick = createRegion;
     els.saveStateAssignments.onclick = saveStateAssignments;
     els.assignStateDropdown.onclick = assignStateFromDropdown;
+    els.deleteSelectedRegion.onclick = deleteSelectedRegion;
 
     els.selectedRegion.onchange = () => {
       selectedRegionId = els.selectedRegion.value;
@@ -109,7 +111,7 @@
   }
 
   async function loadGeoJson() {
-    const res = await fetch("../public/data/states.geojson?v=3");
+    const res = await fetch("../public/data/states.geojson?v=4");
     if (!res.ok) throw new Error("Could not load states.geojson from public/data.");
     geojson = await res.json();
   }
@@ -207,8 +209,6 @@
   }
 
   function renderStateDropdown() {
-    const assigned = new Set(regionStates.map(s => normalizeAbbr(s.state_abbr)));
-
     els.stateToAssign.innerHTML = allStates.map(([abbr, name]) => {
       const current = getStateAssignment(abbr);
       const suffix = current ? ` — currently ${regionById(current.region_id)?.name || "assigned"}` : " — unassigned";
@@ -610,6 +610,44 @@
       await loadData();
     } catch (err) {
       showError("Could not save state assignments. " + (err.message || err));
+    }
+  }
+
+  async function deleteSelectedRegion() {
+    try {
+      hideBoxes();
+
+      if (!selectedRegionId) {
+        showError("No region selected.");
+        return;
+      }
+
+      const region = regionById(selectedRegionId);
+      if (!region) {
+        showError("Selected region was not found.");
+        return;
+      }
+
+      const confirmDelete = confirm(
+        `Delete region "${region.name}"?\n\nThis will also delete its assigned states, Senate seats, Governor row, and House seats.`
+      );
+
+      if (!confirmDelete) return;
+
+      const { error } = await supabase
+        .from("gov_regions")
+        .delete()
+        .eq("id", selectedRegionId);
+
+      if (error) throw error;
+
+      selectedRegionId = "";
+      pendingStateAssignments = {};
+
+      showSuccess(`Region "${region.name}" deleted.`);
+      await loadData();
+    } catch (err) {
+      showError("Could not delete region. " + (err.message || err));
     }
   }
 
