@@ -4,198 +4,452 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>APRP Archive Control</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=3" />
+
+  <link rel="stylesheet" href="./styles.css?v=16" />
 </head>
 
 <body>
   <div id="login-gate" class="login-gate">
     <div class="login-card">
-      <p class="kicker">ADMIN ACCESS REQUIRED</p>
-      <h2>Archive Control Login</h2>
-      <p>Enter the access code to continue.</p>
+      <p class="kicker">APRP ARCHIVE CONTROL</p>
+      <h2>Admin Access</h2>
+      <p>Enter archive control code to continue.</p>
+
       <input id="login-code" type="password" placeholder="Access code" autocomplete="off" />
-      <button id="login-submit">Unlock</button>
-      <div id="login-error" class="login-error hidden">Invalid code.</div>
+      <button id="login-submit" type="button">Unlock Archive Control</button>
+
+      <div id="login-error" class="login-error hidden">Wrong code.</div>
     </div>
   </div>
 
   <main class="admin-shell">
     <header class="topbar">
       <div>
-        <p class="kicker">APRP ARCHIVE CONTROL</p>
-        <h1>Archive Inputs</h1>
-        <p>Presidents, economy charts, timeline events, laws, POTUS elections, and congressional control archives.</p>
+        <p class="kicker">APRP ARCHIVE ADMIN</p>
+        <h1>Archive Control Center</h1>
+        <p>Edit presidents, economy snapshots, events, laws, POTUS elections, and Congress election archives.</p>
       </div>
-      <button id="refresh-data">Refresh</button>
+
+      <div class="actions admin-link-row">
+        <a class="admin-link-btn active" href="./index.html">Main Archive Control</a>
+        <a class="admin-link-btn" href="./halls.html">President Hall Control</a>
+        <a class="admin-link-btn" href="../fec-control-v1/index.html">Government / FEC Control</a>
+        <a class="admin-link-btn" href="../public/archive.html" target="_blank" rel="noopener">Public Archive</a>
+        <button id="refresh-data" type="button">Refresh Data</button>
+      </div>
     </header>
 
     <section id="error-box" class="error-box hidden"></section>
     <section id="success-box" class="success-box hidden"></section>
 
     <nav class="tabs">
-      <button class="tab-btn active" data-tab="presidents">Presidents</button>
-      <button class="tab-btn" data-tab="economy">Economy</button>
-      <button class="tab-btn" data-tab="timeline">Timeline</button>
-      <button class="tab-btn" data-tab="laws">Laws</button>
-      <button class="tab-btn" data-tab="potus">POTUS Elections</button>
-      <button class="tab-btn" data-tab="congress">Congress Elections</button>
+      <button class="tab-btn active" type="button" data-tab="presidents">Presidents</button>
+      <button class="tab-btn" type="button" data-tab="economy">Economy</button>
+      <button class="tab-btn" type="button" data-tab="events">Timeline Events</button>
+      <button class="tab-btn" type="button" data-tab="laws">Laws</button>
+      <button class="tab-btn" type="button" data-tab="potus">POTUS Elections</button>
+      <button class="tab-btn" type="button" data-tab="congress">Congress Elections</button>
     </nav>
 
     <section id="tab-presidents" class="tab-panel active">
       <section class="card">
         <div class="section-head">
-          <h2>Add / Update President</h2>
-          <button id="save-president">Save President</button>
+          <div>
+            <p class="kicker">HALL OF PRESIDENTS</p>
+            <h2>Add / Update President</h2>
+          </div>
+          <button id="save-president" type="button">Save President</button>
         </div>
+
         <div class="grid">
-          <input id="pres-number" placeholder="Number">
-          <input id="pres-slug" placeholder="slug">
-          <input id="pres-name" placeholder="Full name">
-          <input id="pres-party" placeholder="Party">
-          <input id="pres-ideology" placeholder="Ideology">
-          <input id="pres-term-start" placeholder="Term start">
-          <input id="pres-term-end" placeholder="Term end">
-          <input id="pres-vp" placeholder="Vice President">
-          <input id="pres-first-lady" placeholder="First Lady / Gentleman">
-          <input id="pres-portrait" placeholder="Portrait URL">
-          <input id="pres-status" placeholder="current/former">
+          <input id="pres-number" type="number" placeholder="President number, ex: 45" />
+          <input id="pres-slug" placeholder="Slug, ex: francis-underwood" />
+          <input id="pres-name" placeholder="Full name" />
+          <input id="pres-party" placeholder="Party" />
+
+          <input id="pres-ideology" placeholder="Ideology" />
+          <input id="pres-term-start" placeholder="Term start, ex: Jan. 2009" />
+          <input id="pres-term-end" placeholder="Term end, ex: Jan. 2013" />
+          <input id="pres-status" placeholder="Status, current or former" />
+
+          <input id="pres-vp" placeholder="Vice President" />
+          <input id="pres-first-lady" placeholder="First Lady" />
+          <input id="pres-portrait" placeholder="Portrait image URL" />
+
           <textarea id="pres-summary" placeholder="Short summary"></textarea>
           <textarea id="pres-full" placeholder="Full summary"></textarea>
-          <textarea id="pres-accomplishments" placeholder="Accomplishments"></textarea>
-          <textarea id="pres-scandals" placeholder="Scandals"></textarea>
+          <textarea id="pres-accomplishments" placeholder="Major accomplishments"></textarea>
+          <textarea id="pres-scandals" placeholder="Scandals / controversies"></textarea>
         </div>
       </section>
-      <section class="card"><div id="president-list" class="list"></div></section>
+
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">EXISTING</p>
+            <h2>President Records</h2>
+          </div>
+        </div>
+
+        <div id="president-list" class="list">
+          <p class="muted">Loading presidents...</p>
+        </div>
+      </section>
     </section>
 
     <section id="tab-economy" class="tab-panel">
       <section class="card">
         <div class="section-head">
-          <h2>Add Economy Snapshot + Charts</h2>
-          <button id="save-economy">Save Economy</button>
+          <div>
+            <p class="kicker">ECONOMY</p>
+            <h2>Add / Update Economy Snapshot</h2>
+            <p class="muted">Top fields control the current snapshot. The yearly table generates long-term line charts.</p>
+          </div>
+          <button id="save-economy" type="button">Save Economy Snapshot</button>
         </div>
-        <div class="grid">
-          <input id="eco-period-type" placeholder="current/monthly/yearly">
-          <input id="eco-year" placeholder="Year">
-          <input id="eco-month" placeholder="Month">
-          <input id="eco-label" placeholder="Label">
-          <input id="eco-current" placeholder="is current? true/false">
-          <input id="eco-gdp" placeholder="GDP, billions">
-          <input id="eco-growth" placeholder="GDP Growth %">
-          <input id="eco-unemployment" placeholder="Unemployment %">
-          <input id="eco-inflation" placeholder="Inflation %">
-          <input id="eco-debt" placeholder="Debt, billions">
-          <input id="eco-deficit" placeholder="Deficit, billions">
-          <textarea id="eco-summary" placeholder="Summary"></textarea>
-          <textarea id="eco-chart-json" class="json-box" placeholder='Chart JSON example:
-{"charts":[{"title":"GDP Growth","type":"line","unit":"%","points":[{"label":"Jan","value":2.1},{"label":"Feb","value":2.4}]}]}'></textarea>
+
+        <div class="mini-section">
+          <h3>Basic Snapshot Info</h3>
+
+          <div class="grid compact-grid">
+            <label>
+              Period Type
+              <select id="eco-period-type">
+                <option value="current">Current</option>
+                <option value="yearly">Yearly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </label>
+
+            <label>
+              Year
+              <input id="eco-year" type="number" placeholder="2010" />
+            </label>
+
+            <label>
+              Month
+              <input id="eco-month" type="number" placeholder="Optional, 1-12" />
+            </label>
+
+            <label>
+              Label
+              <input id="eco-label" placeholder="FY2010 / March 2010" />
+            </label>
+
+            <label>
+              Is Current?
+              <select id="eco-current">
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="mini-section">
+          <h3>Core Macro Stats</h3>
+
+          <div class="grid compact-grid">
+            <label>
+              GDP, Billions
+              <input id="eco-gdp" type="number" step="0.01" placeholder="14950" />
+            </label>
+
+            <label>
+              GDP Growth %
+              <input id="eco-growth" type="number" step="0.01" placeholder="2.8" />
+            </label>
+
+            <label>
+              Unemployment %
+              <input id="eco-unemployment" type="number" step="0.01" placeholder="8.6" />
+            </label>
+
+            <label>
+              Inflation %
+              <input id="eco-inflation" type="number" step="0.01" placeholder="2.1" />
+            </label>
+
+            <label>
+              Debt, Billions
+              <input id="eco-debt" type="number" step="0.01" placeholder="13200" />
+            </label>
+
+            <label>
+              Deficit, Billions
+              <input id="eco-deficit" type="number" step="0.01" placeholder="1250" />
+            </label>
+
+            <label>
+              Stock Market Index
+              <input id="eco-stock-index" type="number" step="0.01" placeholder="4280" />
+            </label>
+
+            <label>
+              Oil Price
+              <input id="eco-oil-price" type="number" step="0.01" placeholder="82" />
+            </label>
+
+            <label>
+              POTUS Approval %
+              <input id="eco-potus-approval" type="number" step="0.01" placeholder="47" />
+            </label>
+
+            <label>
+              Median Wage
+              <input id="eco-median-wage" type="number" step="0.01" placeholder="48200" />
+            </label>
+          </div>
+
+          <label class="full-label">
+            Economy Summary
+            <textarea id="eco-summary" placeholder="Write the economic summary for this period."></textarea>
+          </label>
+        </div>
+
+        <div class="mini-section">
+          <div class="section-head compact">
+            <div>
+              <h3>Long-Term Line Chart Builder</h3>
+              <p class="muted">Each row becomes a point on the public economy line charts. Year is the bottom-axis label.</p>
+            </div>
+
+            <div class="actions">
+              <button id="add-economy-year-row" type="button">Add Year</button>
+              <button id="build-economy-json" type="button">Build Chart JSON</button>
+            </div>
+          </div>
+
+          <div class="table-wrap small-input-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>GDP</th>
+                  <th>Debt</th>
+                  <th>Growth %</th>
+                  <th>Interest %</th>
+                  <th>Deficit %</th>
+                  <th>Defense %</th>
+                  <th>Jobs</th>
+                  <th>Median Wage</th>
+                  <th>Stock Index</th>
+                  <th>Oil</th>
+                  <th>POTUS Approval</th>
+                  <th></th>
+                </tr>
+              </thead>
+
+              <tbody id="economy-year-rows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mini-section">
+          <h3>Generated Chart JSON</h3>
+          <p class="muted">The builder above generates this automatically. You can still edit it manually if needed.</p>
+
+          <textarea id="eco-chart-json" class="json-box" placeholder="Chart JSON will appear here."></textarea>
         </div>
       </section>
-      <section class="card"><div id="economy-list" class="list"></div></section>
-    </section>
 
-    <section id="tab-timeline" class="tab-panel">
       <section class="card">
         <div class="section-head">
-          <h2>Add Timeline Event</h2>
-          <button id="save-event">Save Event</button>
+          <div>
+            <p class="kicker">EXISTING</p>
+            <h2>Economy Records</h2>
+          </div>
         </div>
-        <div class="grid">
-          <input id="event-title" placeholder="Title">
-          <input id="event-slug" placeholder="slug">
-          <input id="event-year" placeholder="Year">
-          <input id="event-month" placeholder="Month">
-          <input id="event-day" placeholder="Day">
-          <input id="event-date-label" placeholder="Date label">
-          <input id="event-category" placeholder="Category">
-          <input id="event-importance" placeholder="Importance">
-          <textarea id="event-summary" placeholder="Summary"></textarea>
-          <textarea id="event-body" placeholder="Body"></textarea>
+
+        <div id="economy-list" class="list">
+          <p class="muted">Loading economy snapshots...</p>
         </div>
       </section>
-      <section class="card"><div id="event-list" class="list"></div></section>
+    </section>
+
+    <section id="tab-events" class="tab-panel">
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">TIMELINE</p>
+            <h2>Add / Update Timeline Event</h2>
+          </div>
+          <button id="save-event" type="button">Save Event</button>
+        </div>
+
+        <div class="grid">
+          <input id="event-title" placeholder="Event title" />
+          <input id="event-slug" placeholder="Slug, ex: fedex-hiring-freeze" />
+          <input id="event-year" type="number" placeholder="Year" />
+          <input id="event-month" type="number" placeholder="Month" />
+
+          <input id="event-day" type="number" placeholder="Day" />
+          <input id="event-date-label" placeholder="Date label, ex: April 2, 2010" />
+          <input id="event-category" placeholder="Category, ex: economy / foreign / crisis" />
+          <input id="event-importance" type="number" placeholder="Importance, 0-100" />
+
+          <textarea id="event-summary" placeholder="Short summary"></textarea>
+          <textarea id="event-body" placeholder="Full event body"></textarea>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">EXISTING</p>
+            <h2>Timeline Records</h2>
+          </div>
+        </div>
+
+        <div id="event-list" class="list">
+          <p class="muted">Loading events...</p>
+        </div>
+      </section>
     </section>
 
     <section id="tab-laws" class="tab-panel">
       <section class="card">
         <div class="section-head">
-          <h2>Add Law</h2>
-          <button id="save-law">Save Law</button>
+          <div>
+            <p class="kicker">LAW ARCHIVE</p>
+            <h2>Add Law / Act</h2>
+          </div>
+          <button id="save-law" type="button">Save Law</button>
         </div>
+
         <div class="grid">
-          <input id="law-title" placeholder="Title">
-          <input id="law-short" placeholder="Short title">
-          <input id="law-citation" placeholder="Citation">
-          <input id="law-author" placeholder="Author">
-          <input id="law-subject" placeholder="Subject">
-          <input id="law-funding" placeholder="Funding">
-          <input id="law-date" placeholder="Date signed">
-          <input id="law-year" placeholder="Year">
-          <input id="law-link" placeholder="Link URL">
-          <input id="law-status" placeholder="signed/vetoed/etc">
-          <textarea id="law-summary" placeholder="Summary"></textarea>
+          <input id="law-title" placeholder="Title" />
+          <input id="law-short" placeholder="Short title" />
+          <input id="law-citation" placeholder="Citation, ex: P.L. § 2010-20" />
+          <input id="law-author" placeholder="Author" />
+
+          <input id="law-subject" placeholder="Subject" />
+          <input id="law-funding" placeholder="Funding / appropriated" />
+          <input id="law-date" placeholder="Date signed" />
+          <input id="law-year" type="number" placeholder="Year" />
+
+          <input id="law-link" placeholder="Bill link URL" />
+          <input id="law-status" placeholder="Status, signed / vetoed / pending" />
+
+          <textarea id="law-summary" placeholder="Law summary"></textarea>
         </div>
       </section>
-      <section class="card"><div id="law-list" class="list"></div></section>
+
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">EXISTING</p>
+            <h2>Law Records</h2>
+          </div>
+        </div>
+
+        <div id="law-list" class="list">
+          <p class="muted">Loading laws...</p>
+        </div>
+      </section>
     </section>
 
     <section id="tab-potus" class="tab-panel">
       <section class="card">
         <div class="section-head">
-          <h2>Add POTUS Election Archive</h2>
-          <button id="save-potus-election">Save POTUS Election</button>
+          <div>
+            <p class="kicker">PRESIDENTIAL ELECTIONS</p>
+            <h2>Add / Update POTUS Election Archive</h2>
+          </div>
+          <button id="save-potus-election" type="button">Save POTUS Election</button>
         </div>
+
         <div class="grid">
-          <input id="potus-slug" placeholder="slug, e.g. 2008-president">
-          <input id="potus-year" placeholder="Year">
-          <input id="potus-title" placeholder="Title">
-          <input id="potus-winner-name" placeholder="Winner name">
-          <input id="potus-winner-party" placeholder="Winner party">
-          <input id="potus-winner-ev" placeholder="Winner EV">
-          <input id="potus-runner-name" placeholder="Runner-up name">
-          <input id="potus-runner-party" placeholder="Runner-up party">
-          <input id="potus-runner-ev" placeholder="Runner-up EV">
-          <input id="potus-popular-summary" placeholder="Popular vote summary">
-          <input id="potus-map-url" placeholder="Map image URL">
+          <input id="potus-slug" placeholder="Slug, ex: 2010-presidential-election" />
+          <input id="potus-year" type="number" placeholder="Year" />
+          <input id="potus-title" placeholder="Title" />
+          <input id="potus-map-url" placeholder="Map image URL" />
+
+          <input id="potus-winner-name" placeholder="Winner name" />
+          <input id="potus-winner-party" placeholder="Winner party" />
+          <input id="potus-winner-ev" type="number" placeholder="Winner EV" />
+
+          <input id="potus-runner-name" placeholder="Runner-up name" />
+          <input id="potus-runner-party" placeholder="Runner-up party" />
+          <input id="potus-runner-ev" type="number" placeholder="Runner-up EV" />
+
+          <input id="potus-popular-summary" placeholder="Popular vote summary" />
+
           <textarea id="potus-summary" placeholder="Election summary"></textarea>
-          <textarea id="potus-state-json" class="json-box" placeholder='State Results JSON example:
-{"states":[{"state":"Alabama","ev":9,"winner":"GOP","gop":54.9,"dem":42.1,"ind":3.0}]}'></textarea>
+
+          <textarea id="potus-state-json" class="json-box" placeholder='State result JSON, example:
+{
+  "states": [
+    { "state": "Alabama", "ev": 9, "winner": "GOP", "gop": "56.2%", "dem": "42.1%", "ind": "1.7%" }
+  ]
+}'></textarea>
         </div>
       </section>
-      <section class="card"><div id="potus-election-list" class="list"></div></section>
+
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">EXISTING</p>
+            <h2>POTUS Election Archives</h2>
+          </div>
+        </div>
+
+        <div id="potus-election-list" class="list">
+          <p class="muted">Loading POTUS election archives...</p>
+        </div>
+      </section>
     </section>
 
     <section id="tab-congress" class="tab-panel">
       <section class="card">
         <div class="section-head">
-          <h2>Add Congressional Election Archive</h2>
-          <button id="save-congress-election">Save Congress Election</button>
+          <div>
+            <p class="kicker">CONGRESS ELECTIONS</p>
+            <h2>Add / Update Congress Election Archive</h2>
+          </div>
+          <button id="save-congress-election" type="button">Save Congress Election</button>
         </div>
+
         <div class="grid">
-          <input id="cong-slug" placeholder="slug, e.g. 2010-midterms">
-          <input id="cong-year" placeholder="Year">
-          <input id="cong-title" placeholder="Title">
-          <input id="cong-type" placeholder="midterm/presidential/special">
-          <input id="cong-house-control" placeholder="House control">
-          <input id="cong-senate-control" placeholder="Senate control">
-          <input id="cong-governor-control" placeholder="Governor control">
-          <input id="cong-map-url" placeholder="Map image URL">
+          <input id="cong-slug" placeholder="Slug, ex: 2010-midterms" />
+          <input id="cong-year" type="number" placeholder="Year" />
+          <input id="cong-title" placeholder="Title" />
+          <input id="cong-type" placeholder="Election type, ex: midterm / general" />
+
+          <input id="cong-house-control" placeholder="House control" />
+          <input id="cong-senate-control" placeholder="Senate control" />
+          <input id="cong-governor-control" placeholder="Governor control" />
+          <input id="cong-map-url" placeholder="Map image URL" />
+
           <textarea id="cong-house-summary" placeholder="House summary"></textarea>
           <textarea id="cong-senate-summary" placeholder="Senate summary"></textarea>
-          <textarea id="cong-summary" placeholder="Overall summary"></textarea>
-          <textarea id="cong-control-json" class="json-box" placeholder='Control JSON example:
-{"charts":[{"title":"House Control","type":"bar","points":[{"label":"DNC","value":230},{"label":"GOP","value":205}]}]}'></textarea>
+          <textarea id="cong-summary" placeholder="Overall election summary"></textarea>
+
+          <textarea id="cong-control-json" class="json-box" placeholder='Control chart JSON'></textarea>
         </div>
       </section>
-      <section class="card"><div id="congress-election-list" class="list"></div></section>
+
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <p class="kicker">EXISTING</p>
+            <h2>Congress Election Archives</h2>
+          </div>
+        </div>
+
+        <div id="congress-election-list" class="list">
+          <p class="muted">Loading Congress election archives...</p>
+        </div>
+      </section>
     </section>
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../shared/config.js?v=3"></script>
-  <script src="./app.js?v=3"></script>
+  <script src="../shared/config.js?v=16"></script>
+  <script src="./app.js?v=16"></script>
 </body>
 </html>
