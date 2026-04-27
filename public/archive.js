@@ -1,540 +1,402 @@
 (() => {
   const cfg = window.APRP_CONFIG || {};
-  const supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  const supabase = window.supabase?.createClient
+    ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
+    : null;
 
-  const page = location.pathname.split("/").pop() || "archive.html";
+  const TABLES = {
+    settings: "archive_settings",
+    presidents: "archive_presidents",
+    economy: "archive_economy",
+    timeline: "archive_timeline",
+    laws: "archive_laws",
+    potusElections: "archive_potus_elections",
+    congressElections: "archive_congress_elections"
+  };
 
   const els = {
-    error: document.getElementById("error-box"),
-    currentTitle: document.getElementById("current-title"),
-    currentSummary: document.getElementById("current-summary"),
+    errorBox: document.getElementById("error-box"),
+    hubKicker: document.getElementById("hub-kicker"),
+    hubTitle: document.getElementById("hub-title"),
+    hubSummary: document.getElementById("hub-summary"),
+    heroTitle: document.getElementById("hero-title"),
+    heroDescription: document.getElementById("hero-description"),
+    cycleLabel: document.getElementById("cycle-label"),
+    scheduleList: document.getElementById("schedule-list"),
     macroStats: document.getElementById("macro-stats"),
     recentEvents: document.getElementById("recent-events"),
-    presidentList: document.getElementById("president-list"),
-    governmentList: document.getElementById("government-list"),
-    economyList: document.getElementById("economy-list"),
-    potusElectionList: document.getElementById("potus-election-list"),
-    congressElectionList: document.getElementById("congress-election-list"),
-    timelineList: document.getElementById("timeline-list"),
-    lawList: document.getElementById("law-list")
+    featuredPresident: document.getElementById("featured-president"),
+    featuredEconomy: document.getElementById("featured-economy"),
+    featuredTimeline: document.getElementById("featured-timeline")
   };
 
   document.addEventListener("DOMContentLoaded", init);
 
   async function init() {
-    try {
-      hideError();
+    hideError();
 
-      if (page === "government.html") {
-        await loadGovernmentOnly();
-        return;
-      }
-
-      if (page === "economy.html") {
-        await loadEconomyOnly();
-        return;
-      }
-
-      if (page === "presidents.html") {
-        await loadPresidentsOnly();
-        return;
-      }
-
-      if (page === "elections.html") {
-        await loadElectionsOnly();
-        return;
-      }
-
-      if (page === "timeline.html") {
-        await loadTimelineOnly();
-        return;
-      }
-
-      if (page === "laws.html") {
-        await loadLawsOnly();
-        return;
-      }
-
-      await loadArchiveHub();
-    } catch (err) {
-      showError("Could not load archive data. " + (err.message || err));
-    }
-  }
-
-  async function loadArchiveHub() {
-    const [
-      presidentsRes,
-      economyRes,
-      eventsRes,
-      lawsRes,
-      regionsRes,
-      governorsRes,
-      senateRes,
-      houseRes,
-      potusRes,
-      congressRes
-    ] = await Promise.all([
-      supabase.from("president_entries").select("*").order("display_order", { ascending: true }),
-      supabase.from("economy_snapshots").select("*").order("year", { ascending: false }).order("month", { ascending: false }),
-      supabase.from("timeline_events").select("*").order("year", { ascending: false }).order("month", { ascending: false }).order("day", { ascending: false }).limit(20),
-      supabase.from("laws").select("*").order("year", { ascending: false }).limit(20),
-      supabase.from("gov_regions").select("*").order("sort_order", { ascending: true }),
-      supabase.from("gov_governors").select("*"),
-      supabase.from("gov_senate_seats").select("*"),
-      supabase.from("gov_house_seats").select("*"),
-      supabase.from("potus_election_archives").select("*").order("year", { ascending: false }),
-      supabase.from("congress_election_archives").select("*").order("year", { ascending: false })
-    ]);
-
-    [
-      presidentsRes, economyRes, eventsRes, lawsRes, regionsRes,
-      governorsRes, senateRes, houseRes, potusRes, congressRes
-    ].forEach(throwIf);
-
-    const presidents = presidentsRes.data || [];
-    const economy = economyRes.data || [];
-    const events = eventsRes.data || [];
-    const laws = lawsRes.data || [];
-    const regions = regionsRes.data || [];
-    const governors = governorsRes.data || [];
-    const senate = senateRes.data || [];
-    const house = houseRes.data || [];
-    const potus = potusRes.data || [];
-    const congress = congressRes.data || [];
-
-    renderHero(presidents, economy, events);
-    renderPresidents(presidents.slice(0, 6));
-    renderGovernment(regions, governors, senate, house);
-    renderEconomy(economy.slice(0, 6));
-    renderPotusElections(potus.slice(0, 4));
-    renderCongressElections(congress.slice(0, 4));
-    renderEvents(events.slice(0, 8));
-    renderLaws(laws.slice(0, 8));
-  }
-
-  async function loadGovernmentOnly() {
-    const [regionsRes, governorsRes, senateRes, houseRes] = await Promise.all([
-      supabase.from("gov_regions").select("*").order("sort_order", { ascending: true }),
-      supabase.from("gov_governors").select("*"),
-      supabase.from("gov_senate_seats").select("*"),
-      supabase.from("gov_house_seats").select("*")
-    ]);
-
-    [regionsRes, governorsRes, senateRes, houseRes].forEach(throwIf);
-    renderGovernment(regionsRes.data || [], governorsRes.data || [], senateRes.data || [], houseRes.data || []);
-  }
-
-  async function loadEconomyOnly() {
-    const [economyRes, eventsRes] = await Promise.all([
-      supabase.from("economy_snapshots").select("*").order("year", { ascending: false }).order("month", { ascending: false }),
-      supabase.from("timeline_events").select("*").order("year", { ascending: false }).order("month", { ascending: false }).limit(5)
-    ]);
-
-    [economyRes, eventsRes].forEach(throwIf);
-
-    const economy = economyRes.data || [];
-    const events = eventsRes.data || [];
-    renderHero([], economy, events);
-    renderEconomy(economy);
-  }
-
-  async function loadPresidentsOnly() {
-    const { data, error } = await supabase
-      .from("president_entries")
-      .select("*")
-      .order("display_order", { ascending: true });
-
-    if (error) throw error;
-    renderPresidents(data || []);
-  }
-
-  async function loadElectionsOnly() {
-    const [potusRes, congressRes] = await Promise.all([
-      supabase.from("potus_election_archives").select("*").order("year", { ascending: false }),
-      supabase.from("congress_election_archives").select("*").order("year", { ascending: false })
-    ]);
-
-    [potusRes, congressRes].forEach(throwIf);
-    renderPotusElections(potusRes.data || []);
-    renderCongressElections(congressRes.data || []);
-  }
-
-  async function loadTimelineOnly() {
-    const { data, error } = await supabase
-      .from("timeline_events")
-      .select("*")
-      .order("year", { ascending: false })
-      .order("month", { ascending: false })
-      .order("day", { ascending: false });
-
-    if (error) throw error;
-    renderEvents(data || []);
-  }
-
-  async function loadLawsOnly() {
-    const { data, error } = await supabase
-      .from("laws")
-      .select("*")
-      .order("year", { ascending: false });
-
-    if (error) throw error;
-    renderLaws(data || []);
-  }
-
-  function renderHero(presidents, economy, events) {
-    const currentPresident =
-      presidents.find(p => String(p.status || "").toLowerCase() === "current") ||
-      presidents[presidents.length - 1] ||
-      presidents[0];
-
-    const currentEconomy =
-      economy.find(e => e.is_current) ||
-      economy[0];
-
-    setText(
-      els.currentTitle,
-      currentPresident ? `${currentPresident.full_name} Administration` : "APRP Archive"
-    );
-
-    setText(
-      els.currentSummary,
-      currentPresident?.short_summary ||
-      "Government, elections, economy, presidents, events, laws, and timeline records."
-    );
-
-    setHTML(
-      els.macroStats,
-      currentEconomy
-        ? `
-          ${stat("GDP", money(currentEconomy.gdp))}
-          ${stat("Growth", pct(currentEconomy.gdp_growth))}
-          ${stat("Unemployment", pct(currentEconomy.unemployment))}
-          ${stat("Inflation", pct(currentEconomy.inflation))}
-          ${stat("Debt", money(currentEconomy.debt))}
-          ${stat("Deficit", money(currentEconomy.deficit))}
-        `
-        : `<p class="muted">No economy snapshot yet.</p>`
-    );
-
-    setHTML(
-      els.recentEvents,
-      events.slice(0, 5).map(e => `
-        <div class="mini-item">
-          <strong>${esc(e.title)}</strong>
-          <span>${esc(e.date_label || e.year || "")} • ${esc(e.category || "general")}</span>
-        </div>
-      `).join("") || `<p class="muted">No recent events yet.</p>`
-    );
-  }
-
-  function renderPresidents(rows) {
-    setHTML(
-      els.presidentList,
-      rows.map(p => `
-        <article class="record-card">
-          ${p.portrait_url ? `<img class="portrait" src="${escAttr(p.portrait_url)}" alt="">` : ""}
-          <h3>${esc(p.full_name)}</h3>
-          <div class="record-meta">
-            <span class="pill">#${esc(p.number || "")}</span>
-            <span class="pill">${esc(p.party || "")}</span>
-            <span class="pill">${esc(p.term_start || "")}${p.term_end ? "–" + esc(p.term_end) : ""}</span>
-          </div>
-          <p>${esc(p.short_summary || p.full_summary || "No summary yet.")}</p>
-          ${p.major_accomplishments ? `<p><strong>Accomplishments:</strong> ${esc(p.major_accomplishments)}</p>` : ""}
-          ${p.scandals ? `<p><strong>Scandals:</strong> ${esc(p.scandals)}</p>` : ""}
-        </article>
-      `).join("") || `<p class="muted">No presidents added yet.</p>`
-    );
-  }
-
-  function renderGovernment(regions, governors, senate, house) {
-    setHTML(
-      els.governmentList,
-      regions.map(r => {
-        const gov = governors.find(g => g.region_id === r.id);
-        const sens = senate.filter(s => s.region_id === r.id);
-        const reps = house.filter(h => h.region_id === r.id);
-
-        return `
-          <article class="record-card">
-            <h3>${esc(r.name)} ${r.cycle_type ? "|" : ""} ${esc(r.cycle_type || "")}</h3>
-
-            <div class="record-meta">
-              <span class="pill">${esc(sens.length)} Senators</span>
-              <span class="pill">${esc(reps.length)} House Seats</span>
-            </div>
-
-            <p><strong>Governor:</strong> ${esc(gov?.governor_name || "Vacant")} ${gov?.governor_party ? "— " + esc(gov.governor_party) : ""}</p>
-
-            <p><strong>Senate:</strong> ${
-              sens.map(s => {
-                const seat = s.seat_class || s.custom_class || s.seat_name || "Seat";
-                const filler = s.filler_name || "Vacant";
-                const party = s.filler_party ? ` (${s.filler_party})` : "";
-                return `${seat}: ${filler}${party}`;
-              }).join("; ") || "No seats"
-            }</p>
-
-            <p><strong>House:</strong> ${
-              reps.map(h => {
-                const seat = h.seat_name || h.district_name || "Seat";
-                const filler = h.filler_name || h.representative_name || "Vacant";
-                const party = h.filler_party || h.representative_party || "";
-                return `${seat}: ${filler}${party ? ` (${party})` : ""}`;
-              }).join("; ") || "No seats"
-            }</p>
-          </article>
-        `;
-      }).join("") || `<p class="muted">No government regions yet.</p>`
-    );
-  }
-
-  function renderEconomy(rows) {
-    setHTML(
-      els.economyList,
-      rows.map(e => `
-        <article class="record-card wide-card">
-          <h3>${esc(e.label || `${e.year}${e.month ? "-" + e.month : ""}`)}</h3>
-
-          <div class="record-meta">
-            <span class="pill">${esc(e.period_type || "snapshot")}</span>
-            ${e.is_current ? `<span class="pill">Current</span>` : ""}
-            <span class="pill">GDP ${money(e.gdp)}</span>
-            <span class="pill">Growth ${pct(e.gdp_growth)}</span>
-            <span class="pill">Unemployment ${pct(e.unemployment)}</span>
-            <span class="pill">Inflation ${pct(e.inflation)}</span>
-          </div>
-
-          <p>${esc(e.summary || "No summary yet.")}</p>
-
-          ${renderCharts(e.chart_json)}
-        </article>
-      `).join("") || `<p class="muted">No economy snapshots yet.</p>`
-    );
-  }
-
-  function renderPotusElections(rows) {
-    setHTML(
-      els.potusElectionList,
-      rows.map(e => `
-        <article class="record-card election-card">
-          <h3>${esc(e.year)} — ${esc(e.title)}</h3>
-
-          <div class="ev-line">
-            <div>
-              <strong>${esc(e.winner_ev || 0)}</strong>
-              <span>${esc(e.winner_name || "Winner")}</span>
-            </div>
-
-            <div class="ev-bar">
-              <div style="width:${evPct(e.winner_ev, e.runner_up_ev)}%"></div>
-            </div>
-
-            <div>
-              <strong>${esc(e.runner_up_ev || 0)}</strong>
-              <span>${esc(e.runner_up_name || "Runner-up")}</span>
-            </div>
-          </div>
-
-          ${e.map_url ? `<img class="election-map-img" src="${escAttr(e.map_url)}" alt="">` : ""}
-
-          <p>${esc(e.summary || "")}</p>
-
-          ${renderStateTable(e.state_results_json)}
-        </article>
-      `).join("") || `<p class="muted">No presidential election archives yet.</p>`
-    );
-  }
-
-  function renderCongressElections(rows) {
-    setHTML(
-      els.congressElectionList,
-      rows.map(e => `
-        <article class="record-card election-card">
-          <h3>${esc(e.year)} — ${esc(e.title)}</h3>
-
-          <div class="record-meta">
-            <span class="pill">${esc(e.election_type || "")}</span>
-            <span class="pill">House: ${esc(e.house_control || "—")}</span>
-            <span class="pill">Senate: ${esc(e.senate_control || "—")}</span>
-            <span class="pill">Governors: ${esc(e.governor_control || "—")}</span>
-          </div>
-
-          ${e.map_url ? `<img class="election-map-img" src="${escAttr(e.map_url)}" alt="">` : ""}
-
-          <p>${esc(e.summary || "")}</p>
-
-          ${renderCharts(e.control_json)}
-        </article>
-      `).join("") || `<p class="muted">No congressional election archives yet.</p>`
-    );
-  }
-
-  function renderEvents(rows) {
-    setHTML(
-      els.timelineList,
-      rows.map(e => `
-        <div class="timeline-item">
-          <strong>${esc(e.title)}</strong>
-          <span>${esc(e.date_label || e.year || "")} • ${esc(e.category || "")}</span>
-          <p>${esc(e.summary || "")}</p>
-          ${e.body ? `<p>${esc(e.body)}</p>` : ""}
-        </div>
-      `).join("") || `<p class="muted">No timeline events yet.</p>`
-    );
-  }
-
-  function renderLaws(rows) {
-    setHTML(
-      els.lawList,
-      rows.map(l => `
-        <div class="mini-item">
-          <strong>${esc(l.title)}</strong>
-          <span>${esc(l.date_signed || l.year || "")} • ${esc(l.status || "")} • ${esc(l.funding || "")}</span>
-          ${l.summary ? `<p>${esc(l.summary)}</p>` : ""}
-          ${l.link_url ? `<a class="section-link inline-link" href="${escAttr(l.link_url)}" target="_blank" rel="noopener">Open Bill</a>` : ""}
-        </div>
-      `).join("") || `<p class="muted">No laws added yet.</p>`
-    );
-  }
-
-  function renderCharts(chartJson) {
-    const charts = chartJson?.charts;
-    if (!Array.isArray(charts) || !charts.length) return "";
-
-    return `
-      <div class="chart-stack">
-        ${charts.map(chart => {
-          const points = Array.isArray(chart.points) ? chart.points : [];
-          const max = Math.max(...points.map(p => Number(p.value || 0)), 1);
-
-          return `
-            <div class="chart-card">
-              <h4>${esc(chart.title || "Chart")}</h4>
-
-              <div class="bar-chart">
-                ${points.map(p => {
-                  const value = Number(p.value || 0);
-                  const width = Math.max(2, (value / max) * 100);
-
-                  return `
-                    <div class="bar-row">
-                      <span>${esc(p.label)}</span>
-                      <div class="bar-track">
-                        <div class="bar-fill" style="width:${width}%"></div>
-                      </div>
-                      <strong>${esc(value)}${esc(chart.unit || "")}</strong>
-                    </div>
-                  `;
-                }).join("")}
-              </div>
-            </div>
-          `;
-        }).join("")}
-      </div>
-    `;
-  }
-
-  function renderStateTable(json) {
-    const states = json?.states;
-    if (!Array.isArray(states) || !states.length) return "";
-
-    return `
-      <div class="state-table-wrap">
-        <table class="state-table">
-          <thead>
-            <tr>
-              <th>State</th>
-              <th>EV</th>
-              <th>Winner</th>
-              <th>GOP</th>
-              <th>DNC</th>
-              <th>IND</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            ${states.map(s => `
-              <tr>
-                <td>${esc(s.state || "")}</td>
-                <td>${esc(s.ev || "")}</td>
-                <td>${esc(s.winner || "")}</td>
-                <td>${esc(s.gop ?? "")}</td>
-                <td>${esc(s.dem ?? "")}</td>
-                <td>${esc(s.ind ?? "")}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-
-  function evPct(a, b) {
-    const total = Number(a || 0) + Number(b || 0);
-    if (!total) return 50;
-    return Math.max(0, Math.min(100, (Number(a || 0) / total) * 100));
-  }
-
-  function stat(label, value) {
-    return `
-      <div class="stat-box">
-        <span>${esc(label)}</span>
-        <strong>${esc(value)}</strong>
-      </div>
-    `;
-  }
-
-  function setHTML(el, html) {
-    if (!el) return;
-    el.innerHTML = html;
-  }
-
-  function setText(el, text) {
-    if (!el) return;
-    el.textContent = text;
-  }
-
-  function money(n) {
-    if (n === null || n === undefined || n === "") return "—";
-    return "$" + Number(n).toLocaleString() + "B";
-  }
-
-  function pct(n) {
-    if (n === null || n === undefined || n === "") return "—";
-    return Number(n).toFixed(1) + "%";
-  }
-
-  function throwIf(res) {
-    if (res.error) throw res.error;
-  }
-
-  function showError(msg) {
-    if (!els.error) {
-      console.error(msg);
+    if (!supabase) {
+      showError("Supabase config is missing. Check shared/config.js.");
       return;
     }
 
-    els.error.textContent = msg;
-    els.error.classList.remove("hidden");
+    try {
+      const [
+        hubMeta,
+        hubSchedule,
+        presidents,
+        economy,
+        timeline,
+        laws
+      ] = await Promise.all([
+        getSetting("hub_meta", {
+          kicker: "APRP ARCHIVES",
+          title: "American Political Roleplay Archive",
+          summary: "Government, elections, economy, presidents, events, laws, and timeline records.",
+          heroTitle: "APRP Archive",
+          heroDescription: "Government, elections, economy, presidents, events, laws, and timeline records.",
+          cycleLabel: "ACTIVE CYCLE"
+        }),
+        getSetting("hub_schedule", []),
+        fetchRows(TABLES.presidents, { orderBy: "president_number", ascending: false }),
+        fetchRows(TABLES.economy, { orderBy: "year", ascending: false }),
+        fetchRows(TABLES.timeline, { orderBy: "year", ascending: false }),
+        fetchRows(TABLES.laws, { orderBy: "year", ascending: false })
+      ]);
+
+      const currentEconomy = pickCurrentEconomy(economy);
+      const latestPresident = presidents[0] || null;
+      const latestTimeline = sortTimelineDesc(timeline)[0] || null;
+
+      renderHubMeta(hubMeta);
+      renderSchedule(Array.isArray(hubSchedule) ? hubSchedule : []);
+      renderMacroStats(currentEconomy);
+      renderRecentEvents(sortTimelineDesc(timeline).slice(0, 5));
+      renderPresidentFeature(latestPresident, presidents.length);
+      renderEconomyFeature(currentEconomy, economy.length);
+      renderTimelineFeature(latestTimeline, timeline.length, laws.length);
+    } catch (error) {
+      console.error(error);
+      showError(`Could not load archive hub data. ${error.message || error}`);
+    }
+  }
+
+  async function getSetting(key, fallbackValue) {
+    const { data, error } = await supabase
+      .from(TABLES.settings)
+      .select("setting_value")
+      .eq("setting_key", key)
+      .maybeSingle();
+
+    if (error) {
+      if (/does not exist/i.test(error.message || "")) {
+        return fallbackValue;
+      }
+      throw error;
+    }
+
+    return data?.setting_value ?? fallbackValue;
+  }
+
+  async function fetchRows(table, options = {}) {
+    let query = supabase.from(table).select("*");
+
+    if (options.orderBy) {
+      query = query.order(options.orderBy, { ascending: !!options.ascending });
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (/does not exist/i.test(error.message || "")) {
+        return [];
+      }
+      throw error;
+    }
+
+    return Array.isArray(data) ? data : [];
+  }
+
+  function renderHubMeta(meta) {
+    els.hubKicker.textContent = meta?.kicker || "APRP ARCHIVES";
+    els.hubTitle.textContent = meta?.title || "American Political Roleplay Archive";
+    els.hubSummary.textContent = meta?.summary || "Government, elections, economy, presidents, events, laws, and timeline records.";
+    els.heroTitle.textContent = meta?.heroTitle || "APRP Archive";
+    els.heroDescription.textContent = meta?.heroDescription || "Government, elections, economy, presidents, events, laws, and timeline records.";
+    els.cycleLabel.textContent = meta?.cycleLabel || "ACTIVE CYCLE";
+  }
+
+  function renderSchedule(schedule) {
+    if (!els.scheduleList) return;
+
+    const cleaned = schedule
+      .filter(item => item && (item.date || item.name))
+      .map(item => ({
+        date: String(item.date || "").trim(),
+        name: String(item.name || "").trim()
+      }));
+
+    if (!cleaned.length) {
+      els.scheduleList.innerHTML = `<div class="empty-state small">No schedule added yet in Archive Control Center.</div>`;
+      return;
+    }
+
+    els.scheduleList.innerHTML = cleaned.map(item => `
+      <article class="schedule-item">
+        <div class="schedule-date">${escapeHtml(item.date || "—")}</div>
+        <div class="schedule-name">${escapeHtml(item.name || "Untitled schedule item")}</div>
+      </article>
+    `).join("");
+  }
+
+  function renderMacroStats(snapshot) {
+    if (!els.macroStats) return;
+
+    if (!snapshot) {
+      els.macroStats.innerHTML = `
+        <div class="macro-stat"><span>GDP</span><strong>—</strong></div>
+        <div class="macro-stat"><span>Growth</span><strong>—</strong></div>
+        <div class="macro-stat"><span>Unemployment</span><strong>—</strong></div>
+        <div class="macro-stat"><span>Inflation</span><strong>—</strong></div>
+        <div class="macro-stat"><span>Debt</span><strong>—</strong></div>
+        <div class="macro-stat"><span>Deficit</span><strong>—</strong></div>
+      `;
+      return;
+    }
+
+    els.macroStats.innerHTML = `
+      <div class="macro-stat">
+        <span>GDP</span>
+        <strong>${formatBillions(snapshot.gdp_billions)}</strong>
+      </div>
+      <div class="macro-stat">
+        <span>Growth</span>
+        <strong>${formatPercent(snapshot.gdp_growth)}</strong>
+      </div>
+      <div class="macro-stat">
+        <span>Unemployment</span>
+        <strong>${formatPercent(snapshot.unemployment)}</strong>
+      </div>
+      <div class="macro-stat">
+        <span>Inflation</span>
+        <strong>${formatPercent(snapshot.inflation)}</strong>
+      </div>
+      <div class="macro-stat">
+        <span>Debt</span>
+        <strong>${formatBillions(snapshot.debt_billions)}</strong>
+      </div>
+      <div class="macro-stat">
+        <span>Deficit</span>
+        <strong>${formatBillions(snapshot.deficit_billions)}</strong>
+      </div>
+    `;
+  }
+
+  function renderRecentEvents(events) {
+    if (!els.recentEvents) return;
+
+    if (!events.length) {
+      els.recentEvents.innerHTML = `<div class="empty-state small">No recent events yet.</div>`;
+      return;
+    }
+
+    els.recentEvents.innerHTML = events.map(item => `
+      <article class="event-item">
+        <time>${escapeHtml(buildTimelineDate(item) || "Archive Event")}</time>
+        <p>${escapeHtml(item.title || item.event_title || item.short_summary || "Untitled event")}</p>
+      </article>
+    `).join("");
+  }
+
+  function renderPresidentFeature(record, count) {
+    if (!els.featuredPresident) return;
+
+    if (!record) {
+      els.featuredPresident.innerHTML = `
+        <div>
+          <p class="feature-kicker">HALL OF PRESIDENTS</p>
+          <h3 class="feature-title">No presidents added yet</h3>
+          <p class="feature-body">Add presidents in Archive Control Center to populate the Hall preview.</p>
+        </div>
+        <a class="feature-link" href="./hall-of-presidents.html">Open Hall</a>
+      `;
+      return;
+    }
+
+    els.featuredPresident.innerHTML = `
+      <div>
+        <div class="feature-head">
+          <div>
+            <p class="feature-kicker">HALL OF PRESIDENTS</p>
+            <h3 class="feature-title">${escapeHtml(record.full_name || record.name || "President Record")}</h3>
+          </div>
+        </div>
+
+        <div class="feature-meta">
+          <span class="feature-chip">#${escapeHtml(record.president_number || "—")}</span>
+          <span class="feature-chip">${escapeHtml(record.party || "No party")}</span>
+          <span class="feature-chip">${escapeHtml(record.term_start || "—")} — ${escapeHtml(record.term_end || "—")}</span>
+          <span class="feature-chip">${count} record${count === 1 ? "" : "s"}</span>
+        </div>
+
+        <p class="feature-body">${escapeHtml(record.short_summary || record.full_summary || "No summary added yet.")}</p>
+      </div>
+
+      <a class="feature-link" href="./hall-of-presidents.html">Open Hall</a>
+    `;
+  }
+
+  function renderEconomyFeature(record, count) {
+    if (!els.featuredEconomy) return;
+
+    if (!record) {
+      els.featuredEconomy.innerHTML = `
+        <div>
+          <p class="feature-kicker">ECONOMY</p>
+          <h3 class="feature-title">No economy data yet</h3>
+          <p class="feature-body">Add yearly or monthly snapshots in Archive Control Center to populate this preview.</p>
+        </div>
+        <a class="feature-link" href="./economy.html">Open Economy</a>
+      `;
+      return;
+    }
+
+    els.featuredEconomy.innerHTML = `
+      <div>
+        <p class="feature-kicker">ECONOMY</p>
+        <h3 class="feature-title">${escapeHtml(record.label || buildEconomyLabel(record) || "Economy Snapshot")}</h3>
+
+        <div class="feature-meta">
+          <span class="feature-chip">GDP ${formatBillions(record.gdp_billions)}</span>
+          <span class="feature-chip">Growth ${formatPercent(record.gdp_growth)}</span>
+          <span class="feature-chip">Unemployment ${formatPercent(record.unemployment)}</span>
+          <span class="feature-chip">${count} snapshot${count === 1 ? "" : "s"}</span>
+        </div>
+
+        <p class="feature-body">${escapeHtml(record.summary || record.economy_summary || "No summary added yet.")}</p>
+      </div>
+
+      <a class="feature-link" href="./economy.html">Open Economy</a>
+    `;
+  }
+
+  function renderTimelineFeature(record, timelineCount, lawsCount) {
+    if (!els.featuredTimeline) return;
+
+    if (!record) {
+      els.featuredTimeline.innerHTML = `
+        <div>
+          <p class="feature-kicker">TIMELINE</p>
+          <h3 class="feature-title">No timeline events yet</h3>
+          <p class="feature-body">Add major events, crises, and canon entries in Archive Control Center.</p>
+        </div>
+        <a class="feature-link" href="./timeline.html">Open Timeline</a>
+      `;
+      return;
+    }
+
+    els.featuredTimeline.innerHTML = `
+      <div>
+        <p class="feature-kicker">TIMELINE & LAWS</p>
+        <h3 class="feature-title">${escapeHtml(record.title || "Latest Archive Event")}</h3>
+
+        <div class="feature-meta">
+          <span class="feature-chip">${escapeHtml(buildTimelineDate(record) || "Date unknown")}</span>
+          <span class="feature-chip">${timelineCount} timeline entries</span>
+          <span class="feature-chip">${lawsCount} law records</span>
+        </div>
+
+        <p class="feature-body">${escapeHtml(record.short_summary || record.full_body || "No summary added yet.")}</p>
+      </div>
+
+      <a class="feature-link" href="./timeline.html">Open Timeline</a>
+    `;
+  }
+
+  function pickCurrentEconomy(rows) {
+    if (!Array.isArray(rows) || !rows.length) return null;
+
+    const current = rows.find(row => {
+      const value = row.is_current;
+      return value === true || String(value).toLowerCase() === "true";
+    });
+
+    if (current) return current;
+
+    return rows
+      .slice()
+      .sort((a, b) => {
+        const ay = Number(a.year || 0);
+        const by = Number(b.year || 0);
+        const am = Number(a.month || 0);
+        const bm = Number(b.month || 0);
+        return by - ay || bm - am;
+      })[0] || null;
+  }
+
+  function sortTimelineDesc(rows) {
+    return (rows || []).slice().sort((a, b) => {
+      const ay = Number(a.year || 0);
+      const by = Number(b.year || 0);
+      const am = Number(a.month || 0);
+      const bm = Number(b.month || 0);
+      const ad = Number(a.day || 0);
+      const bd = Number(b.day || 0);
+      return by - ay || bm - am || bd - ad;
+    });
+  }
+
+  function buildEconomyLabel(row) {
+    if (!row) return "";
+    if (row.label) return row.label;
+    if (row.period_type === "monthly") {
+      return `${row.year || ""} / Month ${row.month || ""}`;
+    }
+    return row.year ? `Year ${row.year}` : "Economy Snapshot";
+  }
+
+  function buildTimelineDate(row) {
+    if (!row) return "";
+    if (row.date_label) return row.date_label;
+
+    const parts = [];
+    if (row.month) parts.push(row.month);
+    if (row.day) parts.push(row.day);
+    if (row.year) parts.push(row.year);
+    return parts.join(" ");
+  }
+
+  function formatBillions(value) {
+    if (value === null || value === undefined || value === "") return "—";
+    const num = Number(value);
+    if (Number.isNaN(num)) return String(value);
+    return `$${num.toLocaleString()}B`;
+  }
+
+  function formatPercent(value) {
+    if (value === null || value === undefined || value === "") return "—";
+    const num = Number(value);
+    if (Number.isNaN(num)) return `${value}%`;
+    return `${num.toFixed(1)}%`;
+  }
+
+  function showError(message) {
+    if (!els.errorBox) return;
+    els.errorBox.textContent = message;
+    els.errorBox.classList.remove("hidden");
   }
 
   function hideError() {
-    if (!els.error) return;
-    els.error.classList.add("hidden");
+    els.errorBox?.classList.add("hidden");
   }
 
-  function esc(s) {
-    return String(s ?? "").replace(/[&<>'"]/g, m => ({
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>'"]/g, char => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
       "'": "&#39;",
-      '"': "&quot;"
-    }[m]));
-  }
-
-  function escAttr(s) {
-    return esc(s).replace(/`/g, "&#96;");
+      "\"": "&quot;"
+    }[char]));
   }
 })();
