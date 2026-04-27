@@ -48,6 +48,8 @@
   }
 
   function setupLoginGate() {
+    if (!els.loginGate) return true;
+
     if (sessionStorage.getItem(STORAGE_KEY) === "true") {
       els.loginGate.classList.add("hidden");
       return true;
@@ -80,13 +82,13 @@
   }
 
   function wireEvents() {
-    els.refresh.onclick = loadData;
-    els.savePresident.onclick = savePresident;
-    els.saveEconomy.onclick = saveEconomy;
-    els.saveEvent.onclick = saveEvent;
-    els.saveLaw.onclick = saveLaw;
-    els.savePotusElection.onclick = savePotusElection;
-    els.saveCongressElection.onclick = saveCongressElection;
+    if (els.refresh) els.refresh.onclick = loadData;
+    if (els.savePresident) els.savePresident.onclick = savePresident;
+    if (els.saveEconomy) els.saveEconomy.onclick = saveEconomy;
+    if (els.saveEvent) els.saveEvent.onclick = saveEvent;
+    if (els.saveLaw) els.saveLaw.onclick = saveLaw;
+    if (els.savePotusElection) els.savePotusElection.onclick = savePotusElection;
+    if (els.saveCongressElection) els.saveCongressElection.onclick = saveCongressElection;
 
     els.tabs.forEach(btn => {
       btn.onclick = () => switchTab(btn.dataset.tab);
@@ -159,11 +161,19 @@
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase.from("president_entries").upsert(payload, { onConflict: "slug" });
+      const { error } = await supabase
+        .from("president_entries")
+        .upsert(payload, { onConflict: "slug" });
+
       if (error) throw error;
 
       showSuccess("President saved.");
-      clearFields(["pres-number","pres-slug","pres-name","pres-party","pres-ideology","pres-term-start","pres-term-end","pres-vp","pres-first-lady","pres-portrait","pres-status","pres-summary","pres-full","pres-accomplishments","pres-scandals"]);
+      clearFields([
+        "pres-number", "pres-slug", "pres-name", "pres-party", "pres-ideology",
+        "pres-term-start", "pres-term-end", "pres-vp", "pres-first-lady",
+        "pres-portrait", "pres-status", "pres-summary", "pres-full",
+        "pres-accomplishments", "pres-scandals"
+      ]);
       await loadData();
     } catch (err) {
       showError("Could not save president. " + (err.message || err));
@@ -193,11 +203,18 @@
 
       if (!payload.year) throw new Error("Economy year is required.");
 
-      const { error } = await supabase.from("economy_snapshots").insert(payload);
+      const { error } = await supabase
+        .from("economy_snapshots")
+        .insert(payload);
+
       if (error) throw error;
 
       showSuccess("Economy snapshot saved.");
-      clearFields(["eco-period-type","eco-year","eco-month","eco-label","eco-current","eco-gdp","eco-growth","eco-unemployment","eco-inflation","eco-debt","eco-deficit","eco-summary","eco-chart-json"]);
+      clearFields([
+        "eco-period-type", "eco-year", "eco-month", "eco-label", "eco-current",
+        "eco-gdp", "eco-growth", "eco-unemployment", "eco-inflation",
+        "eco-debt", "eco-deficit", "eco-summary", "eco-chart-json"
+      ]);
       await loadData();
     } catch (err) {
       showError("Could not save economy snapshot. " + (err.message || err));
@@ -226,11 +243,18 @@
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase.from("timeline_events").upsert(payload, { onConflict: "slug" });
+      const { error } = await supabase
+        .from("timeline_events")
+        .upsert(payload, { onConflict: "slug" });
+
       if (error) throw error;
 
       showSuccess("Timeline event saved.");
-      clearFields(["event-title","event-slug","event-year","event-month","event-day","event-date-label","event-category","event-importance","event-summary","event-body"]);
+      clearFields([
+        "event-title", "event-slug", "event-year", "event-month", "event-day",
+        "event-date-label", "event-category", "event-importance",
+        "event-summary", "event-body"
+      ]);
       await loadData();
     } catch (err) {
       showError("Could not save event. " + (err.message || err));
@@ -258,11 +282,18 @@
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase.from("laws").insert(payload);
+      const { error } = await supabase
+        .from("laws")
+        .insert(payload);
+
       if (error) throw error;
 
       showSuccess("Law saved.");
-      clearFields(["law-title","law-short","law-citation","law-author","law-subject","law-funding","law-date","law-year","law-link","law-status","law-summary"]);
+      clearFields([
+        "law-title", "law-short", "law-citation", "law-author", "law-subject",
+        "law-funding", "law-date", "law-year", "law-link", "law-status",
+        "law-summary"
+      ]);
       await loadData();
     } catch (err) {
       showError("Could not save law. " + (err.message || err));
@@ -294,11 +325,19 @@
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase.from("potus_election_archives").upsert(payload, { onConflict: "slug" });
+      const { error } = await supabase
+        .from("potus_election_archives")
+        .upsert(payload, { onConflict: "slug" });
+
       if (error) throw error;
 
       showSuccess("POTUS election archive saved.");
-      clearFields(["potus-slug","potus-year","potus-title","potus-winner-name","potus-winner-party","potus-winner-ev","potus-runner-name","potus-runner-party","potus-runner-ev","potus-popular-summary","potus-map-url","potus-summary","potus-state-json"]);
+      clearFields([
+        "potus-slug", "potus-year", "potus-title", "potus-winner-name",
+        "potus-winner-party", "potus-winner-ev", "potus-runner-name",
+        "potus-runner-party", "potus-runner-ev", "potus-popular-summary",
+        "potus-map-url", "potus-summary", "potus-state-json"
+      ]);
       await loadData();
     } catch (err) {
       showError("Could not save POTUS election. " + (err.message || err));
@@ -329,11 +368,19 @@
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase.from("congress_election_archives").upsert(payload, { onConflict: "slug" });
+      const { error } = await supabase
+        .from("congress_election_archives")
+        .upsert(payload, { onConflict: "slug" });
+
       if (error) throw error;
 
       showSuccess("Congress election archive saved.");
-      clearFields(["cong-slug","cong-year","cong-title","cong-type","cong-house-control","cong-senate-control","cong-governor-control","cong-map-url","cong-house-summary","cong-senate-summary","cong-summary","cong-control-json"]);
+      clearFields([
+        "cong-slug", "cong-year", "cong-title", "cong-type",
+        "cong-house-control", "cong-senate-control", "cong-governor-control",
+        "cong-map-url", "cong-house-summary", "cong-senate-summary",
+        "cong-summary", "cong-control-json"
+      ]);
       await loadData();
     } catch (err) {
       showError("Could not save Congress election. " + (err.message || err));
@@ -349,7 +396,11 @@
       const ok = confirm(`Delete this ${label}? This cannot be undone.`);
       if (!ok) return;
 
-      const { error } = await supabase.from(table).delete().eq("id", id);
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .eq("id", id);
+
       if (error) throw error;
 
       showSuccess(`${label} deleted.`);
@@ -369,6 +420,7 @@
         <button class="danger small-delete" data-delete-table="president_entries" data-delete-id="${escAttr(p.id)}" data-delete-label="president">Delete</button>
       </div>
     `).join("") || `<p class="muted">No presidents yet.</p>`;
+
     wireDeleteButtons();
   }
 
@@ -382,6 +434,7 @@
         <button class="danger small-delete" data-delete-table="economy_snapshots" data-delete-id="${escAttr(e.id)}" data-delete-label="economy snapshot">Delete</button>
       </div>
     `).join("") || `<p class="muted">No economy snapshots yet.</p>`;
+
     wireDeleteButtons();
   }
 
@@ -395,6 +448,7 @@
         <button class="danger small-delete" data-delete-table="timeline_events" data-delete-id="${escAttr(e.id)}" data-delete-label="timeline event">Delete</button>
       </div>
     `).join("") || `<p class="muted">No events yet.</p>`;
+
     wireDeleteButtons();
   }
 
@@ -408,6 +462,7 @@
         <button class="danger small-delete" data-delete-table="laws" data-delete-id="${escAttr(l.id)}" data-delete-label="law">Delete</button>
       </div>
     `).join("") || `<p class="muted">No laws yet.</p>`;
+
     wireDeleteButtons();
   }
 
@@ -421,6 +476,7 @@
         <button class="danger small-delete" data-delete-table="potus_election_archives" data-delete-id="${escAttr(e.id)}" data-delete-label="POTUS election archive">Delete</button>
       </div>
     `).join("") || `<p class="muted">No POTUS election archives yet.</p>`;
+
     wireDeleteButtons();
   }
 
@@ -434,18 +490,24 @@
         <button class="danger small-delete" data-delete-table="congress_election_archives" data-delete-id="${escAttr(e.id)}" data-delete-label="Congress election archive">Delete</button>
       </div>
     `).join("") || `<p class="muted">No Congress election archives yet.</p>`;
+
     wireDeleteButtons();
   }
 
   function wireDeleteButtons() {
     document.querySelectorAll("[data-delete-table]").forEach(btn => {
-      btn.onclick = () => deleteRecord(btn.dataset.deleteTable, btn.dataset.deleteId, btn.dataset.deleteLabel);
+      btn.onclick = () => deleteRecord(
+        btn.dataset.deleteTable,
+        btn.dataset.deleteId,
+        btn.dataset.deleteLabel
+      );
     });
   }
 
   function parseJsonField(id) {
     const raw = val(id);
     if (!raw) return {};
+
     try {
       return JSON.parse(raw);
     } catch {
@@ -476,6 +538,7 @@
   function numberOrNull(id) {
     const v = val(id);
     if (v === "") return null;
+
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   }
