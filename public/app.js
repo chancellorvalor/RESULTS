@@ -459,7 +459,7 @@
       els.year.classList.toggle("hidden", !election.year);
     }
 
-    document.title = election.title || "APRP Live Results";
+    document.title = election.title || "Live Results";
 
     renderScoreboard();
     renderLegend();

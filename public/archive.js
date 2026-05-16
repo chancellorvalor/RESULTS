@@ -43,10 +43,10 @@
 
     try {
       const hubMeta = await getSetting("hub_meta", {
-        kicker: "APRP ARCHIVES",
-        title: "American Political Roleplay Archive",
+        kicker: "ARCHIVES",
+        title: "Archive",
         summary: "Government, elections, economy, presidents, events, laws, and timeline records.",
-        heroTitle: "APRP Archive",
+        heroTitle: "Archive",
         heroDescription: "Government, elections, economy, presidents, events, laws, and timeline records.",
         cycleLabel: "ACTIVE CYCLE"
       });
@@ -159,10 +159,10 @@
 
   function renderFallbackPage() {
     renderHubMeta({
-      kicker: "APRP ARCHIVES",
-      title: "American Political Roleplay Archive",
+      kicker: "ARCHIVES",
+      title: "Archive",
       summary: "Government, elections, economy, presidents, events, laws, and timeline records.",
-      heroTitle: "APRP Archive",
+      heroTitle: "Archive",
       heroDescription: "Government, elections, economy, presidents, events, laws, and timeline records.",
       cycleLabel: "ACTIVE CYCLE"
     });
@@ -176,10 +176,10 @@
   }
 
   function renderHubMeta(meta) {
-    if (els.hubKicker) els.hubKicker.textContent = meta?.kicker || "APRP ARCHIVES";
-    if (els.hubTitle) els.hubTitle.textContent = meta?.title || "American Political Roleplay Archive";
+    if (els.hubKicker) els.hubKicker.textContent = meta?.kicker || "ARCHIVES";
+    if (els.hubTitle) els.hubTitle.textContent = meta?.title || "Archive";
     if (els.hubSummary) els.hubSummary.textContent = meta?.summary || "Government, elections, economy, presidents, events, laws, and timeline records.";
-    if (els.heroTitle) els.heroTitle.textContent = meta?.heroTitle || "APRP Archive";
+    if (els.heroTitle) els.heroTitle.textContent = meta?.heroTitle || "Archive";
     if (els.heroDescription) els.heroDescription.textContent = meta?.heroDescription || "Government, elections, economy, presidents, events, laws, and timeline records.";
     if (els.cycleLabel) els.cycleLabel.textContent = meta?.cycleLabel || "ACTIVE CYCLE";
   }
